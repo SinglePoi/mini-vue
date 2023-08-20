@@ -1,3 +1,5 @@
+import { extend } from "../shared/index";
+
 export let activeEffect;
 
 export interface ReactiveEffectRunner<T = any> {
@@ -15,7 +17,7 @@ export function effect(fn, obj?: ReactiveEffectOptions) {
   _effect.run();
   const runenr = _effect.run.bind(_effect) as ReactiveEffectRunner;
   runenr.effect = _effect;
-  _effect.onStop = obj?.onStop;
+  extend(_effect, obj);
   return runenr;
 }
 
