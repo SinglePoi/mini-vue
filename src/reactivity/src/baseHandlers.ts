@@ -48,10 +48,7 @@ export const readonlyHandlers = {
 
 const targetMap = new WeakMap();
 export function track(target, key) {
-  // 如果没有 activeEffect 不进行依赖收集
-  if (!activeEffect) return;
-  // stop 情况下，不收集依赖
-  if (!shouldTrack) return;
+  if (!isTracking()) return;
 
   let depsMap = targetMap.get(target);
   if (!depsMap) {
@@ -63,6 +60,9 @@ export function track(target, key) {
     deps = new Set();
     depsMap.set(key, deps);
   }
+
+  // 如果 deps 已经收集了该依赖，没必要再搜集一次
+  if (deps.has(activeEffect)) return;
 
   deps.add(activeEffect);
   activeEffect.deps.push(deps);
@@ -81,4 +81,14 @@ export function trigger(target, key) {
       effect.run();
     }
   }
+}
+
+// 在 tracking 状态中
+function isTracking() {
+  // 如果没有 activeEffect 不进行依赖收集
+  //   if (!activeEffect) return;
+  // stop 情况下，不收集依赖
+  //   if (!shouldTrack) return;
+
+  return shouldTrack && activeEffect !== undefined;
 }
