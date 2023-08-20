@@ -1,5 +1,11 @@
 ## mini-vue-annotation
 
+本项目中 Vue3 的学习方式是：
+1、编写测试用例
+2、通过测试用例
+3、重构代码，使其更有可读性
+其中
+
 - 使用 jest 作为单元测试
   - 通过单元测试用例实现 Vue API 接口的功能
 - 使用 TypeScript 作为类型系统
@@ -16,6 +22,8 @@
   - effect.fn 应该立即执行一次
   - 并且将 effect.fn 赋值给 activeEffect
   - effect 需要返回一个 runner 函数，由开发者去控制执行的时机
+  - stop 函数可以在依赖队列中删除依赖的 effect，?但是只能生效一次
+  - onStop 函数是 stop 的钩子函数，在执行 stop 函数时触发
 
 ### 所得
 

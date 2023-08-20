@@ -1,4 +1,4 @@
-import { effect } from "../src/effect";
+import { ReactiveEffectRunner, effect, stop } from "../src/effect";
 import { reactive } from "../src/reactive";
 
 describe("effect", () => {
@@ -36,11 +36,12 @@ describe("effect", () => {
     expect(r).toBe("num");
   });
   it("增加 scheduler 参数，接受自定义的函数", () => {
+    let dummy;
+    let run;
+
     const user = reactive({
       age: 1,
     });
-    let dummy;
-    let run;
 
     // jest.fn 是 jest 特例化的 function，增加了 jest 监听的功能
     const scheduler = jest.fn(() => {
@@ -75,5 +76,52 @@ describe("effect", () => {
     run();
     // 执行 run 意味着，执行了 effect 的第一个函数
     expect(dummy).toBe(2);
+  });
+
+  it("stop 方法能够使 effect 暂时离开依赖队列，直到再次执行 runner", () => {
+    let dummy;
+    const user = reactive({
+      age: 1,
+    });
+    const runner: ReactiveEffectRunner = effect(() => {
+      dummy = user.age;
+    });
+
+    user.age = 2;
+    // 此时 effect 会执行一次
+    expect(dummy).toBe(2);
+
+    stop(runner);
+    user.age = 3;
+    // effect 不应该被执行
+    expect(dummy).toBe(2);
+
+    runner();
+    // effect 被手动执行
+    expect(dummy).toBe(3);
+
+    // 此时 stop 已经没用了，是这样的吗？
+    stop(runner);
+    user.age = 4;
+    expect(dummy).toBe(4);
+  });
+  it("onStop: stop 的钩子函数,应该在调用 stop 时执行", () => {
+    const user = reactive({
+      age: 0,
+    });
+    const onStop = jest.fn();
+
+    let dummy;
+    const runner = effect(
+      () => {
+        dummy = user.age;
+      },
+      {
+        onStop,
+      }
+    );
+    stop(runner);
+    expect(onStop).toHaveBeenCalled();
+    expect(onStop).toHaveBeenCalledTimes(1);
   });
 });

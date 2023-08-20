@@ -34,6 +34,7 @@ export function track(target, key) {
   }
 
   deps.add(activeEffect);
+  activeEffect.deps.push(deps);
 }
 
 export function trigger(target, key) {
