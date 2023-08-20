@@ -1,4 +1,5 @@
-import { activeEffect } from "./effect";
+import { activeEffect, shouldTrack } from "./effect";
+import { ReactiveFlags } from "./reactive";
 
 // 对 set/get 进行缓存，只在初始化的时候执行一次，避免多余的内存消耗
 const reactiveGet = createGetter();
@@ -7,6 +8,11 @@ const readonlyGet = createGetter(true);
 
 function createGetter(isReadonly = false) {
   return function get(target, key) {
+    if (key === ReactiveFlags.IS_READONLY) {
+      return isReadonly;
+    } else if (key === ReactiveFlags.IS_RESCTIVE) {
+      return !isReadonly;
+    }
     const result = Reflect.get(target, key);
     //  依赖收集
     if (!isReadonly) {
@@ -44,6 +50,8 @@ const targetMap = new WeakMap();
 export function track(target, key) {
   // 如果没有 activeEffect 不进行依赖收集
   if (!activeEffect) return;
+  // stop 情况下，不收集依赖
+  if (!shouldTrack) return;
 
   let depsMap = targetMap.get(target);
   if (!depsMap) {

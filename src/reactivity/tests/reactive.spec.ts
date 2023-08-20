@@ -1,4 +1,4 @@
-import { reactive, readonly } from "../src/reactive";
+import { isReadonly, isReative, reactive, readonly } from "../src/reactive";
 
 describe("reactive", () => {
   const _user = {
@@ -30,5 +30,12 @@ describe("reactive", () => {
     expect(r_user.name).toBe("hong");
     // 且 console.warn 被调用
     expect(console.warn).toHaveBeenCalled();
+  });
+  it("isReadonly 判断对象是否经过 readonly 处理", () => {
+    const r_user = readonly(_user);
+    expect(isReadonly(r_user)).toBe(true);
+  });
+  it("isReative 判断对象是否经过 reactive 处理", () => {
+    expect(isReative(user)).toBe(true);
   });
 });
