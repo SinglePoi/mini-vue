@@ -1,4 +1,4 @@
-import { extend } from "../shared/index";
+import { extend } from "../../shared/index";
 
 export let activeEffect;
 

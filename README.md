@@ -20,9 +20,9 @@
     - get 中通过 track 实现收集依赖（activeEffect）
     - set 中通过 trigger 实现触发依赖（activeEffect）
     - 依赖是否收集需要通过 activeEffect 判断
+    - readonly 对对象的 set 方法进行拦截，阻止对值的更改且输出提示
 - 实现 effect
-  - effect.fn 应该立即执行一次
-  - 并且将 effect.fn 赋值给 activeEffect
+  - effect.fn 应该立即执行一次，并且将 effect.fn 赋值给 activeEffect
   - effect 需要返回一个 runner 函数，由开发者去控制执行的时机
   - stop 函数可以在依赖队列中删除依赖的 effect，?但是只能生效一次
   - onStop 函数是 stop 的钩子函数，在执行 stop 函数时触发

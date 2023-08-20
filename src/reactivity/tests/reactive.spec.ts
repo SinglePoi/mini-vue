@@ -1,4 +1,4 @@
-import { reactive } from "../src/reactive";
+import { reactive, readonly } from "../src/reactive";
 
 describe("reactive", () => {
   const _user = {
@@ -9,11 +9,26 @@ describe("reactive", () => {
     // getter
     expect(user.name).toBe("ming");
 
-    //setter
+    // setter
     user.name = "hong";
     expect(user.name).toBe("hong");
   });
   it("reactive 构造的对象不再是原对象", () => {
     expect(user).not.toBe(_user);
+  });
+  it("readonly 使对象变得只读", () => {
+    const r_user = readonly(_user);
+
+    console.warn = jest.fn();
+
+    // 开始前 name 值
+    expect(r_user.name).toBe("hong");
+
+    // 触发 readonly 的 set 方法
+    r_user.name = "xinxin";
+    // name 值不应该被改变
+    expect(r_user.name).toBe("hong");
+    // 且 console.warn 被调用
+    expect(console.warn).toHaveBeenCalled();
   });
 });
