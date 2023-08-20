@@ -33,7 +33,7 @@ export function track(target, key) {
     depsMap.set(key, deps);
   }
 
-  deps.add(acctiveEffect);
+  deps.add(activeEffect);
 }
 
 export function trigger(target, key) {
