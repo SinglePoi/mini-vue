@@ -43,6 +43,10 @@ export function trigger(target, key) {
   const deps = depsMap.get(key);
 
   for (const effect of deps) {
-    effect.run();
+    if (effect._scheduler) {
+      effect._scheduler();
+    } else {
+      effect.run();
+    }
   }
 }
