@@ -21,6 +21,9 @@
     - set 中通过 trigger 实现触发依赖（activeEffect）
     - 依赖是否收集需要通过 activeEffect 和 shouldTrack 判断
     - readonly 对对象的 set 方法进行拦截，阻止对值的更改且输出提示
+    - reactive 默认的深层次代理，是通过对上层代理的 Reflect.get 返回的值在进行一次 reactive；当然，需要判断是否是对象类型
+    - readonly 默认的深层代理，如同 reactive 的思路
+    - shallowReadonly 的实现在于：在 shallow 状态为 true 时，直接返回上层代理的返回值
 - 实现 effect
   - effect.fn 应该立即执行一次，并且将 effect.fn 赋值给 activeEffect
   - effect 需要返回一个 runner 函数，由开发者去控制执行的时机
@@ -31,3 +34,5 @@
 ### 所得
 
 - 新增功能时，尽量减少对已实现功能逻辑层的修改，最好在应用层做出区分
+- 一个函数应该只负责一种功能的实现
+- 函数的命名可以参照它的实现，如果出现长串的函数名，说明该函数仍具备重构的可能

@@ -1,11 +1,17 @@
-import { isReadonly, isReative, reactive, readonly } from "../src/reactive";
+import {
+  isReadonly,
+  isReative,
+  reactive,
+  readonly,
+  shallowReadonly,
+} from "../src/reactive";
 
 describe("reactive", () => {
   const _user = {
     name: "ming",
   };
   const user = reactive(_user);
-  it("reactive 构造的对象具备最基础的 get/set 操作", () => {
+  it("1、reactive 构造的对象具备最基础的 get/set 操作", () => {
     // getter
     expect(user.name).toBe("ming");
 
@@ -13,10 +19,10 @@ describe("reactive", () => {
     user.name = "hong";
     expect(user.name).toBe("hong");
   });
-  it("reactive 构造的对象不再是原对象", () => {
+  it("2、reactive 构造的对象不再是原对象", () => {
     expect(user).not.toBe(_user);
   });
-  it("readonly 使对象变得只读", () => {
+  it("3、readonly 使对象变得只读", () => {
     const r_user = readonly(_user);
 
     console.warn = jest.fn();
@@ -31,11 +37,47 @@ describe("reactive", () => {
     // 且 console.warn 被调用
     expect(console.warn).toHaveBeenCalled();
   });
-  it("isReadonly 判断对象是否经过 readonly 处理", () => {
+  it("4、isReadonly 判断对象是否经过 readonly 处理", () => {
     const r_user = readonly(_user);
     expect(isReadonly(r_user)).toBe(true);
   });
-  it("isReative 判断对象是否经过 reactive 处理", () => {
+  it("5、isReative 判断对象是否经过 reactive 处理", () => {
     expect(isReative(user)).toBe(true);
+  });
+  it("6、reactive 对对象的转化应该是深层次的", () => {
+    const _product = {
+      price: 12,
+      // 配料
+      batching: {
+        carbohydrate: "20%", // 碳水化合物
+      },
+    };
+    const product = reactive(_product);
+    expect(isReative(product)).toBe(true);
+    expect(isReative(product.batching)).toBe(true);
+  });
+  it("7、readonly 对对象的转化应该是深层次的", () => {
+    const _product = {
+      price: 12,
+      // 配料
+      batching: {
+        carbohydrate: "20%", // 碳水化合物
+      },
+    };
+    const product = readonly(_product);
+    expect(isReadonly(product)).toBe(true);
+    expect(isReadonly(product.batching)).toBe(true);
+  });
+  it("8、shallowReadonly 对对象的转化应该是浅层次的", () => {
+    const _product = {
+      price: 12,
+      // 配料
+      batching: {
+        carbohydrate: "20%", // 碳水化合物
+      },
+    };
+    const product = shallowReadonly(_product);
+    expect(isReadonly(product)).toBe(true);
+    expect(isReadonly(product.batching)).toBe(false);
   });
 });
