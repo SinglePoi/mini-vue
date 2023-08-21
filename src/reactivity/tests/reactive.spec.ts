@@ -1,9 +1,10 @@
 import {
   isReadonly,
-  isReative,
+  isReactive,
   reactive,
   readonly,
   shallowReadonly,
+  isProxy,
 } from "../src/reactive";
 
 describe("reactive", () => {
@@ -42,7 +43,7 @@ describe("reactive", () => {
     expect(isReadonly(r_user)).toBe(true);
   });
   it("5、isReative 判断对象是否经过 reactive 处理", () => {
-    expect(isReative(user)).toBe(true);
+    expect(isReactive(user)).toBe(true);
   });
   it("6、reactive 对对象的转化应该是深层次的", () => {
     const _product = {
@@ -53,8 +54,8 @@ describe("reactive", () => {
       },
     };
     const product = reactive(_product);
-    expect(isReative(product)).toBe(true);
-    expect(isReative(product.batching)).toBe(true);
+    expect(isReactive(product)).toBe(true);
+    expect(isReactive(product.batching)).toBe(true);
   });
   it("7、readonly 对对象的转化应该是深层次的", () => {
     const _product = {
@@ -79,5 +80,13 @@ describe("reactive", () => {
     const product = shallowReadonly(_product);
     expect(isReadonly(product)).toBe(true);
     expect(isReadonly(product.batching)).toBe(false);
+  });
+  it("9、isProxy 判断对象是否时 Proxy 代理对象", () => {
+    expect(isReactive(user)).toBe(true);
+    expect(isProxy(user)).toBe(true);
+
+    const r_user = readonly(_user);
+    expect(isReadonly(r_user)).toBe(true);
+    expect(isProxy(r_user)).toBe(true);
   });
 });
