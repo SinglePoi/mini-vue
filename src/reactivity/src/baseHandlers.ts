@@ -1,4 +1,4 @@
-import { isObject } from "../../shared/index";
+import { extend, isObject } from "../../shared/index";
 import { activeEffect, shouldTrack } from "./effect";
 import { ReactiveFlags, reactive, readonly } from "./reactive";
 
@@ -60,13 +60,17 @@ export const readonlyHandlers = {
   },
 };
 
-export const shallowReadonlyHandlers = {
+export const shallowReadonlyHandlers = extend({}, readonlyHandlers, {
   get: shallowReadonlyGet,
-  set() {
-    console.warn("target is readonly");
-    return true;
-  },
-};
+});
+
+// {
+//   get: shallowReadonlyGet,
+//   set() {
+//     console.warn("target is readonly");
+//     return true;
+//   },
+// };
 
 const targetMap = new WeakMap();
 export function track(target, key) {
