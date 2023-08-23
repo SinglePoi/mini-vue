@@ -71,3 +71,61 @@ function cleanupEffect(effect: ReactiveEffect) {
 export function stop(runner: any) {
   runner.effect.stop();
 }
+
+const targetMap = new WeakMap();
+export function track(target, key) {
+  if (!isTracking()) return;
+
+  let depsMap = targetMap.get(target);
+  if (!depsMap) {
+    depsMap = new Map();
+    targetMap.set(target, depsMap);
+  }
+  let deps = depsMap.get(key);
+  if (!deps) {
+    deps = new Set();
+    depsMap.set(key, deps);
+  }
+
+  // 完成 effect 的收集
+  trackEffects(deps);
+}
+
+export function trigger(target, key) {
+  const depsMap = targetMap.get(target);
+  // 如果 depsMap 为 underfined ，说明没有进行过依赖收集，这时不应该执行依赖
+  if (!depsMap) return;
+  const deps = depsMap.get(key);
+
+  triggerEffects(deps);
+}
+
+// 在 tracking 状态中
+export function isTracking() {
+  // 如果没有 activeEffect 不进行依赖收集
+  //   if (!activeEffect) return;
+  // stop 情况下，不收集依赖
+  //   if (!shouldTrack) return;
+
+  return shouldTrack && activeEffect !== undefined;
+}
+
+// 为了方便 ref 的调用，对其逻辑进行抽离
+export function trackEffects(deps) {
+  // 如果 deps 已经收集了该依赖，没必要再搜集一次
+  if (deps.has(activeEffect)) return;
+
+  deps.add(activeEffect);
+  activeEffect.deps.push(deps);
+}
+
+// 为了方便 ref 的调用，对其逻辑进行抽离
+export function triggerEffects(deps) {
+  for (const effect of deps) {
+    if (effect._scheduler) {
+      effect._scheduler();
+    } else {
+      effect.run();
+    }
+  }
+}

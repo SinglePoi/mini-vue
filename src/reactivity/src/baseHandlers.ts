@@ -1,5 +1,5 @@
 import { extend, isObject } from "../../shared/index";
-import { activeEffect, shouldTrack } from "./effect";
+import { track, trigger } from "./effect";
 import { ReactiveFlags, reactive, readonly } from "./reactive";
 
 // 对 set/get 进行缓存，只在初始化的时候执行一次，避免多余的内存消耗
@@ -63,58 +63,3 @@ export const readonlyHandlers = {
 export const shallowReadonlyHandlers = extend({}, readonlyHandlers, {
   get: shallowReadonlyGet,
 });
-
-// {
-//   get: shallowReadonlyGet,
-//   set() {
-//     console.warn("target is readonly");
-//     return true;
-//   },
-// };
-
-const targetMap = new WeakMap();
-export function track(target, key) {
-  if (!isTracking()) return;
-
-  let depsMap = targetMap.get(target);
-  if (!depsMap) {
-    depsMap = new Map();
-    targetMap.set(target, depsMap);
-  }
-  let deps = depsMap.get(key);
-  if (!deps) {
-    deps = new Set();
-    depsMap.set(key, deps);
-  }
-
-  // 如果 deps 已经收集了该依赖，没必要再搜集一次
-  if (deps.has(activeEffect)) return;
-
-  deps.add(activeEffect);
-  activeEffect.deps.push(deps);
-}
-
-export function trigger(target, key) {
-  const depsMap = targetMap.get(target);
-  // 如果 depsMap 为 underfined ，说明没有进行过依赖收集，这时不应该执行依赖
-  if (!depsMap) return;
-  const deps = depsMap.get(key);
-
-  for (const effect of deps) {
-    if (effect._scheduler) {
-      effect._scheduler();
-    } else {
-      effect.run();
-    }
-  }
-}
-
-// 在 tracking 状态中
-function isTracking() {
-  // 如果没有 activeEffect 不进行依赖收集
-  //   if (!activeEffect) return;
-  // stop 情况下，不收集依赖
-  //   if (!shouldTrack) return;
-
-  return shouldTrack && activeEffect !== undefined;
-}
