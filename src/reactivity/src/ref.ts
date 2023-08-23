@@ -1,4 +1,4 @@
-import { isObject } from "../../shared/index";
+import { hasChanged, isObject } from "../../shared/index";
 import { isTracking, trackEffects, triggerEffects } from "./effect";
 import { reactive } from "./reactive";
 
@@ -9,23 +9,32 @@ class RefImpl {
 
   constructor(value) {
     this._rawValue = value;
-    this._value = isObject(value) ? reactive(value) : value;
+    this._value = convert(value);
     this.dep = new Set();
   }
 
   get value() {
-    if (isTracking()) {
-      trackEffects(this.dep);
-    }
+    trackRefValue(this);
     return this._value;
   }
 
-  set value(_value) {
-    if (Object.is(this._rawValue, _value)) return;
-    this._rawValue = _value;
-    this._value = isObject(_value) ? reactive(_value) : _value;
-    triggerEffects(this.dep);
+  set value(newValue) {
+    if (hasChanged(newValue, this._rawValue)) {
+      this._rawValue = newValue;
+      this._value = convert(newValue);
+      triggerEffects(this.dep);
+    }
   }
+}
+
+function trackRefValue(ref) {
+  if (isTracking()) {
+    trackEffects(ref.dep);
+  }
+}
+
+function convert(value) {
+  return isObject(value) ? reactive(value) : value;
 }
 
 export function ref(value: any) {
