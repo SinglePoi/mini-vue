@@ -1,6 +1,6 @@
 import { effect } from "../src/effect";
-import { isReactive } from "../src/reactive";
-import { ref } from "../src/ref";
+import { isReactive, reactive } from "../src/reactive";
+import { isRef, ref, unRef } from "../src/ref";
 
 describe("ref", () => {
   it("1、ref 应该通过 .value 获取值", () => {
@@ -34,5 +34,29 @@ describe("ref", () => {
     v.value = 2;
     expect(age).toBe(2);
     expect(dummy).toBe(2);
+  });
+  it("4、isRef 判断目标是否通过 ref 创建", () => {
+    const just_ref = ref(1);
+    const _user = {
+      age: 1,
+    };
+    const react_user = reactive(_user);
+    const ref_user = ref(_user);
+
+    expect(isRef(just_ref)).toBe(true);
+    expect(isRef(react_user)).toBe(false);
+    expect(isRef(ref_user)).toBe(true);
+    expect(isReactive(ref_user.value)).toBe(true);
+  });
+
+  it("5、unRef 返回 ref.value 或本身", () => {
+    const just_ref = ref(1);
+    const _user = {
+      age: 1,
+    };
+    const one = 1;
+
+    expect(unRef(just_ref)).toBe(1);
+    expect(unRef(one)).toBe(1);
   });
 });

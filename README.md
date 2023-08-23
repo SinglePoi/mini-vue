@@ -16,7 +16,8 @@
 ### 如此
 
 - 实现 reactive
-  - 通过 Proxy 实现
+  - 逻辑
+    - 通过 Proxy 实现
     - get 中通过 track 实现收集依赖（activeEffect）
     - set 中通过 trigger 实现触发依赖（activeEffect）
     - 依赖是否收集需要通过 activeEffect 和 shouldTrack 判断
@@ -24,17 +25,26 @@
     - reactive 默认的深层次代理，是通过对上层代理的 Reflect.get 返回的值在进行一次 reactive；当然，需要判断是否是对象类型
     - readonly 默认的深层代理，如同 reactive 的思路
     - shallowReadonly 的实现在于：在 shallow 状态为 true 时，直接返回上层代理的返回值
+  - API
+    - isReactive: 目标值是否是通过 reactive 创建的
+    - isReadonly: 目标值是否是通过 readonly 创建的
+    - isProxy: 目标值能否满足 isReactive 和 isReadonly 其中之一
 - 实现 effect
-  - effect.fn 应该立即执行一次，并且将 effect.fn 赋值给 activeEffect
-  - effect 需要返回一个 runner 函数，由开发者去控制执行的时机
-  - stop 函数可以在依赖队列中删除依赖的 effect，~~?但是只能生效一次~~
-  - onStop 函数是 stop 的钩子函数，在执行 stop 函数时触发
-  - 为了避免 stop 状态下，对依赖的重新收集，设置新的状态变量 shouldTrack
+  - 逻辑
+    - effect.fn 应该立即执行一次，并且将 effect.fn 赋值给 activeEffect
+    - effect 需要返回一个 runner 函数，由开发者去控制执行的时机
+    - stop 函数可以在依赖队列中删除依赖的 effect，~~?但是只能生效一次~~
+    - onStop 函数是 stop 的钩子函数，在执行 stop 函数时触发
+    - 为了避免 stop 状态下，对依赖的重新收集，设置新的状态变量 shouldTrack
 - 实现 ref
-  - ref 目标参数是原始类型，同时又需要收集 effect，因此采用 class 的存取器函数实现；这也是 ref 的值需要通过 .value 来获取的原因
-  - 如果 ref 的实参是一个对象类型，则调用 reactive 代理参数
-  - ref 的 setter 函数需要对新老值进行对比，同时要兼容对象类型，因此采用 Object.is()
-  - 也因为要对比对象类型的值，需要在 reactive 代理之前存储这个对象
+  - 逻辑
+    - ref 目标参数是原始类型，同时又需要收集 effect，因此采用 class 的存取器函数实现；这也是 ref 的值需要通过 .value 来获取的原因
+    - 如果 ref 的实参是一个对象类型，则调用 reactive 代理参数
+    - ref 的 setter 函数需要对新老值进行对比，同时要兼容对象类型，因此采用 Object.is()
+    - 也因为要对比对象类型的值，需要在 reactive 代理之前存储这个对象
+  - API
+    - isRef: 判断是否是 ref 创建的值
+    - unRef: 对于 ref 值返回 ref.value，否则返回本身
 
 ### 所得
 
