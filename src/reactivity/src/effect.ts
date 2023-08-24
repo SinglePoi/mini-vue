@@ -23,13 +23,13 @@ export function effect(fn, obj?: ReactiveEffectOptions) {
 
 export type EffectFn = () => any;
 
-class ReactiveEffect {
+export class ReactiveEffect {
   private _fn: EffectFn;
   public _scheduler: EffectScheduler;
   public deps = [];
   private active = true;
   public onStop?: () => any;
-  constructor(fn, scheduler) {
+  constructor(fn, scheduler?) {
     this._fn = fn;
     this._scheduler = scheduler;
   }

@@ -48,6 +48,11 @@
     - proxyRef: 接受一个对象，如果对象中存在 ref 属性，取值时不需要 .value, 赋值时存在两种情况
       - 新值非 ref，老值是 ref，需要对 .value 进行赋值
       - 新值是 ref，无论老值是什么，直接进行替换
+- 实现 computed
+  - 逻辑
+    - computed 表现和 ref 差不多，都是通过 .value 求值，最大的不同点在于，computed 具备缓存能力
+    - 如何缓存：第一次执行时，将结果存储至私有属性中；下次执行时，如果依赖的 reactive 对象没有发生变化时，直接返回该私有属性的值
+    - 如何判断响应式对象没有发生变化？设置一个中间值，为 true 时认为发生了变化。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
 
 ### 所得
 
