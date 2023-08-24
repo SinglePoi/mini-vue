@@ -1,6 +1,6 @@
 import { effect } from "../src/effect";
-import { isReactive, reactive } from "../src/reactive";
-import { isRef, ref, unRef } from "../src/ref";
+import { isProxy, isReactive, reactive } from "../src/reactive";
+import { isRef, proxyRef, ref, unRef } from "../src/ref";
 
 describe("ref", () => {
   it("1、ref 应该通过 .value 获取值", () => {
@@ -58,5 +58,28 @@ describe("ref", () => {
 
     expect(unRef(just_ref)).toBe(1);
     expect(unRef(one)).toBe(1);
+  });
+  it("6、proxyRef 可以使目标 ref 获取值时不再需要 .value", () => {
+    const user = {
+      age: ref(0),
+      name: "xiaohong",
+    };
+
+    const proxyUser = proxyRef(user);
+    expect(user.age.value).toBe(0);
+    expect(proxyUser.age).toBe(0);
+    expect(proxyUser.name).toBe("xiaohong");
+
+    // 对 proxyUser 的修改，也应该反映到源 ref 中
+    proxyUser.age = 20;
+    expect(proxyUser.age).toBe(20);
+    expect(user.age.value).toBe(20);
+
+    proxyUser.age = ref(10);
+    expect(proxyUser.age).toBe(10);
+    expect(user.age.value).toBe(10);
+
+    // proxyUser 是否是 proxy ?
+    // expect(isProxy(proxyUser)).toBe(true);
   });
 });

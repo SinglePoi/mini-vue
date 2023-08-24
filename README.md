@@ -45,6 +45,9 @@
   - API
     - isRef: 判断是否是 ref 创建的值
     - unRef: 对于 ref 值返回 ref.value，否则返回本身
+    - proxyRef: 接受一个对象，如果对象中存在 ref 属性，取值时不需要 .value, 赋值时存在两种情况
+      - 新值非 ref，老值是 ref，需要对 .value 进行赋值
+      - 新值是 ref，无论老值是什么，直接进行替换
 
 ### 所得
 
