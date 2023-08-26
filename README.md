@@ -15,6 +15,8 @@
 
 ### 如此
 
+reactivity 模块
+
 - 实现 reactive
   - 逻辑
     - 通过 Proxy 实现
@@ -53,6 +55,14 @@
     - computed 表现和 ref 差不多，都是通过 .value 求值，最大的不同点在于，computed 具备缓存能力
     - 如何缓存：第一次执行时，将结果存储至私有属性中；下次执行时，如果依赖的 reactive 对象没有发生变化时，直接返回该私有属性的值
     - 如何判断响应式对象没有发生变化？设置一个中间值，为 true 时认为发生了变化。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
+
+runtime-core 模块
+主要负责组件的挂载，将组件转化为 vnode，一个成熟的组件需要具备 render 函数和 setup 函数。render 函数用于处理组件的内容，setup 用于处理注解的状态
+render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props children 三个属性。type 具备两种类型：object 和 string；
+
+- 挂载的控制流分析由 patch 函数完成。主要通过 type 类型进行判断，存在以下两个分支。
+- 组件挂载流程 processComponent ：当 type 类型为 object 时，进入组件流程。目前会直接执行 mountComponent 函数，其中第一步完成对组件实例的创建、装箱；第二步完成组件实例的开箱，最后渲染 render 函数内的 vnode，进入 patch 函数
+- 元素挂载流程 processElement：当 type 类型为 string 时，进入元素流程。其中分别处理 attribute 和 children ，最后挂载到容器上
 
 ### 所得
 
