@@ -21,20 +21,20 @@ export function patch(vnode, rootContainer) {
   }
 }
 
-function processComponent(vnode, rootContainer) {
+function processComponent(initialVnode, rootContainer) {
   // updateComponent
-  mountComponent(vnode, rootContainer);
+  mountComponent(initialVnode, rootContainer);
 }
 
-function mountComponent(vnode, rootContainer) {
+function mountComponent(initialVnode, rootContainer) {
   // 通过 vnode 创建的实例对象，用于处理 props、slots、setup
-  const instance = createComponentInstance(vnode);
+  const instance = createComponentInstance(initialVnode);
 
   // 去装载 props、slots、setup、render，这一过程可以认为是一种装箱
   setupComponent(instance);
 
   // 去挂载 render ，这一过程可以认为是一种开箱
-  setupRenderEffect(instance, vnode, rootContainer);
+  setupRenderEffect(instance, initialVnode, rootContainer);
 }
 
 function processElement(vnode, rootContainer) {
@@ -43,6 +43,9 @@ function processElement(vnode, rootContainer) {
 
 function mountElement(vnode, rootContainer) {
   const { type, children, props } = vnode;
+
+  // 这里赋值给 vnode.el 是为了可以在 render 函数中调用 this.$el
+  // 但需要注意这里的 vnode 指的是 element
   const el: Element = (vnode.el = document.createElement(type));
 
   // 处理 children

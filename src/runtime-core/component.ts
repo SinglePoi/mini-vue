@@ -1,4 +1,5 @@
 import { isObject } from "../shared/index";
+import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
 import { patch } from "./renderer";
 
 export function createComponentInstance(vnode) {
@@ -24,25 +25,7 @@ function setupStatefulComponent(instance) {
   const { setup } = Component;
 
   // 设置一个代理，用于在 render 函数中可以使用 this 调用
-  instance.proxy = new Proxy(
-    {},
-    {
-      get(target, key) {
-        const { setupState } = instance;
-        debugger;
-        if (key in setupState) {
-          return setupState[key];
-        }
-
-        if (key === "$el") {
-          return instance.vnode.el;
-        }
-      },
-      set(target, key, newValue) {
-        return true;
-      },
-    }
-  );
+  instance.proxy = new Proxy({ _: instance }, PublicInstanceProxyHandlers);
 
   if (setup) {
     const setupResult = setup();
@@ -70,9 +53,10 @@ function finishComponentSetup(instance) {
   }
 }
 
-export function setupRenderEffect(instance, vnode, container) {
+export function setupRenderEffect(instance, initialVnode, container) {
   const subTree = instance.render.call(instance.proxy);
   patch(subTree, container);
 
-  vnode.el = subTree.el;
+  // 在整个 element 渲染完毕后，再将 elementVnode 上的 el 赋值给当前组件的 el
+  initialVnode.el = subTree.el;
 }
