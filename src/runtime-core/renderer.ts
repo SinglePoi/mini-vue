@@ -34,7 +34,7 @@ function mountComponent(vnode, rootContainer) {
   setupComponent(instance);
 
   // 去挂载 render ，这一过程可以认为是一种开箱
-  setupRenderEffect(instance, rootContainer);
+  setupRenderEffect(instance, vnode, rootContainer);
 }
 
 function processElement(vnode, rootContainer) {
@@ -43,7 +43,7 @@ function processElement(vnode, rootContainer) {
 
 function mountElement(vnode, rootContainer) {
   const { type, children, props } = vnode;
-  const el: Element = document.createElement(type);
+  const el: Element = (vnode.el = document.createElement(type));
 
   // 处理 children
   if (typeof children === "string") {

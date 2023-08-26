@@ -29,8 +29,13 @@ function setupStatefulComponent(instance) {
     {
       get(target, key) {
         const { setupState } = instance;
+        debugger;
         if (key in setupState) {
           return setupState[key];
+        }
+
+        if (key === "$el") {
+          return instance.vnode.el;
         }
       },
       set(target, key, newValue) {
@@ -65,7 +70,9 @@ function finishComponentSetup(instance) {
   }
 }
 
-export function setupRenderEffect(instance, container) {
-  const subTree = instance.render.bind(instance.proxy);
+export function setupRenderEffect(instance, vnode, container) {
+  const subTree = instance.render.call(instance.proxy);
   patch(subTree, container);
+
+  vnode.el = subTree.el;
 }
