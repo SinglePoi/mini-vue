@@ -3,11 +3,24 @@ window.self = null;
 export const App = {
   render() {
     self = this;
-    return h("div", { id: "root", class: ["red"] }, "" + this.msg);
+    return h(
+      "div",
+      {
+        id: "root",
+        class: ["red"],
+        onClick: () => {
+          console.log("click");
+        },
+        onMousedown: () => {
+          console.log("mousedown");
+        },
+      },
+      "" + this.msg
+    );
   },
   setup() {
     return {
-      msg: "mini-vue",
+      msg: "this setup module",
     };
   },
 };
