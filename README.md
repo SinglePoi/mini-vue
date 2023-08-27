@@ -65,6 +65,7 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
 - 组件挂载流程 processComponent ：当 type 类型为 object 时，进入组件流程。目前会直接执行 mountComponent 函数，其中第一步完成对组件实例的创建、装箱；第二步完成组件实例的开箱，最后渲染 render 函数内的 vnode，进入 patch 函数
 - 元素挂载流程 processElement：当 type 类型为 string 时，进入元素流程。其中分别处理 attribute 和 children ，最后挂载到容器上
 - 为了在 render 函数中，能够使用 this 来获取特定的数据，例如 setup 中的返回值。创建一个 proxy 对象来代理 this 的 getter 方法，从 setupState 中获取值
+- 以性能为主，使用位运算代替之前的分支判断
 
 ### 所得
 

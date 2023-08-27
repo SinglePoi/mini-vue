@@ -1,3 +1,4 @@
+import { ShapeFlages } from "../shared/ShapeFlags";
 import { isObject } from "../shared/index";
 import {
   createComponentInstance,
@@ -13,10 +14,10 @@ export function patch(vnode, rootContainer) {
   /**
    * vnode.type: object | string
    */
-  const { type } = vnode;
-  if (isObject(type)) {
+  const { type, shapeFlag } = vnode;
+  if (ShapeFlages.STATEFUL_COMPONENT & shapeFlag) {
     processComponent(vnode, rootContainer);
-  } else if (typeof type === "string") {
+  } else if (ShapeFlages.ELEMENT & shapeFlag) {
     processElement(vnode, rootContainer);
   }
 }
@@ -42,16 +43,16 @@ function processElement(vnode, rootContainer) {
 }
 
 function mountElement(vnode, rootContainer) {
-  const { type, children, props } = vnode;
+  const { type, children, props, shapeFlag } = vnode;
 
   // 这里赋值给 vnode.el 是为了可以在 render 函数中调用 this.$el
   // 但需要注意这里的 vnode 指的是 element
   const el: Element = (vnode.el = document.createElement(type));
 
   // 处理 children
-  if (typeof children === "string") {
+  if (ShapeFlages.TEXT_CHILDREN & shapeFlag) {
     el.textContent = children;
-  } else if (Array.isArray(children)) {
+  } else if (ShapeFlages.ARRAY_CHILDREN & shapeFlag) {
     mountChildren(children, el);
   }
   // attribute
