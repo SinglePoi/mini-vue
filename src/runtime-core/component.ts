@@ -1,4 +1,5 @@
 import { isObject } from "../shared/index";
+import { initProps } from "./componentProps";
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
 import { patch } from "./renderer";
 
@@ -15,20 +16,21 @@ export function createComponentInstance(vnode) {
 
 export function setupComponent(instance) {
   // props
+  initProps(instance, instance.vnode.props);
   // slots
   // setup
   setupStatefulComponent(instance);
 }
 
 function setupStatefulComponent(instance) {
-  const Component = instance.type;
+  const { type: Component, props } = instance;
   const { setup } = Component;
 
   // 设置一个代理，用于在 render 函数中可以使用 this 调用
   instance.proxy = new Proxy({ _: instance }, PublicInstanceProxyHandlers);
 
   if (setup) {
-    const setupResult = setup();
+    const setupResult = setup(props);
 
     handlerSetupResult(instance, setupResult);
   }

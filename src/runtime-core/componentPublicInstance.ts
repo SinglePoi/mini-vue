@@ -10,7 +10,7 @@ const publicPropertiesMap = {
 };
 export const PublicInstanceProxyHandlers = {
   get({ _: instance }, key) {
-    const { setupState } = instance;
+    const { setupState, props } = instance;
     if (key in setupState) {
       return setupState[key];
     }
@@ -18,6 +18,10 @@ export const PublicInstanceProxyHandlers = {
     const publicGetter = publicPropertiesMap[key];
     if (publicGetter) {
       return publicGetter(instance);
+    }
+
+    if (key in props) {
+      return props[key];
     }
   },
   set(target, key, newValue) {
