@@ -1,3 +1,4 @@
+import { isObject } from "../../shared/index";
 import {
   reactiveHandlers,
   readonlyHandlers,
@@ -22,6 +23,10 @@ export function shallowReadonly(target: any) {
 }
 
 function createReactiveObject(target, baseHandlers) {
+  if (!isObject(target)) {
+    console.warn(`target ${target} is non-object `);
+    return target;
+  }
   return new Proxy(target, baseHandlers);
 }
 

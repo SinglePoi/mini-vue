@@ -1,3 +1,4 @@
+import { shallowReadonly } from "../reactivity/src/reactive";
 import { isObject } from "../shared/index";
 import { initProps } from "./componentProps";
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
@@ -30,7 +31,7 @@ function setupStatefulComponent(instance) {
   instance.proxy = new Proxy({ _: instance }, PublicInstanceProxyHandlers);
 
   if (setup) {
-    const setupResult = setup(props);
+    const setupResult = setup(shallowReadonly(props));
 
     handlerSetupResult(instance, setupResult);
   }

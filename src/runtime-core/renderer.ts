@@ -1,5 +1,5 @@
 import { ShapeFlages } from "../shared/ShapeFlags";
-import { isObject } from "../shared/index";
+import { isObject, isOn } from "../shared/index";
 import {
   createComponentInstance,
   setupComponent,
@@ -58,7 +58,6 @@ function mountElement(vnode, rootContainer) {
   // attribute
   for (const key in props) {
     const value = props[key];
-    const isOn = (key: string) => /^on[A-Z]/.test(key);
     if (isOn(key)) {
       const event = key.slice(2).toLowerCase();
       el.addEventListener(event, value);

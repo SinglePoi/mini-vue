@@ -6,7 +6,7 @@ export const Foo = {
     // has props
     console.log(props);
 
-    // and props is readonly
+    // props is shallow readonly
   },
   render() {
     return h("div", { class: "blue" }, "foo: " + this.count);

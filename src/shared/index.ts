@@ -7,3 +7,8 @@ export function isObject(target: unknown) {
 export const hasChanged = (newValue, oldValue) => {
   return !Object.is(newValue, oldValue);
 };
+
+export const hasOwn = (target, key: string) =>
+  Object.prototype.hasOwnProperty.call(target, key);
+
+export const isOn = (key: string) => /^on[A-Z]/.test(key);
