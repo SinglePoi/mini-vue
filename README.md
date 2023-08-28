@@ -66,6 +66,9 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
 - 元素挂载流程 processElement：当 type 类型为 string 时，进入元素流程。其中分别处理 attribute 和 children ，最后挂载到容器上
 - 为了在 render 函数中，能够使用 this 来获取特定的数据，例如 setup 中的返回值。创建一个 proxy 对象来代理 this 的 getter 方法，从 setupState 中获取值
 - 以性能为主，使用位运算代替之前的分支判断
+- setup(props, {emit})
+  - 其一，将 props 作为 setup 的参数
+  - 其二，emit 的本质是查找 props 中是否存在对应的 onEvent 函数，去调用该函数，其中使用了 bind 去改写了 emit 的 this 指向，使当前组件实例对象永远作为参数之一，不需要用户去额外传入
 
 ### 所得
 
