@@ -3,6 +3,7 @@ import { isObject } from "../shared/index";
 import { emit } from "./componentEmit";
 import { initProps } from "./componentProps";
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
+import { initSlots } from "./componentSlots";
 import { patch } from "./renderer";
 
 export function createComponentInstance(vnode) {
@@ -10,7 +11,7 @@ export function createComponentInstance(vnode) {
     vnode,
     type: vnode.type,
     props: {},
-    slots: [],
+    slots: {},
     setupState: {},
     emit: () => {},
   };
@@ -24,6 +25,7 @@ export function setupComponent(instance) {
   // props
   initProps(instance, instance.vnode.props);
   // slots
+  initSlots(instance, instance.vnode.children);
   // setup
   setupStatefulComponent(instance);
 }

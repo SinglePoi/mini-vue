@@ -55,6 +55,7 @@ function mountElement(vnode, rootContainer) {
   } else if (ShapeFlages.ARRAY_CHILDREN & shapeFlag) {
     mountChildren(children, el);
   }
+
   // attribute
   for (const key in props) {
     const value = props[key];
