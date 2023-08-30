@@ -1,4 +1,5 @@
 import { ShapeFlages } from "../shared/ShapeFlags";
+import { isObject } from "../shared/index";
 
 export function createVNode(type, props?, children?) {
   const vnode = {
@@ -14,6 +15,13 @@ export function createVNode(type, props?, children?) {
     vnode.shapeFlag |= ShapeFlages.TEXT_CHILDREN;
   } else if (Array.isArray(children)) {
     vnode.shapeFlag |= ShapeFlages.ARRAY_CHILDREN;
+  }
+
+  // 如果 type 是组件 且 children 是对象类型，说明需要将 children 处理为 slots
+  if (vnode.shapeFlag & ShapeFlages.STATEFUL_COMPONENT) {
+    if (isObject(children)) {
+      vnode.shapeFlag |= ShapeFlages.SLOT_CHILDREN;
+    }
   }
 
   return vnode;

@@ -11,7 +11,15 @@ export const App = {
       header: slot1,
       footer: slot2,
     };
-    const foo = h(Foo, {}, nameSlots);
+    // const foo = h(Foo, {}, nameSlots);
+    /**
+     * 作用域插槽：父组件能够读取子组件暴露的指定状态
+     */
+    const scopeSlots = {
+      header: ({ age }) => h("p", {}, "我的年龄是" + age),
+      footer: () => h("p", {}, "你好"),
+    };
+    const foo = h(Foo, {}, scopeSlots);
     return h("div", {}, [app, foo]);
   },
   setup() {
