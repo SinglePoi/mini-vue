@@ -45,11 +45,11 @@ function setupStatefulComponent(instance) {
      * 目的是在 setup 函数中可以使用 getCurrentInstance
      * 如果没有 setup 函数当然就不需要 currentInstance 了
      */
-    currentInstance = instance;
+    setCurrentInstance(instance);
     const setupResult = setup(shallowReadonly(props), {
       emit,
     });
-    currentInstance = null;
+    setCurrentInstance(null);
     handlerSetupResult(instance, setupResult);
   }
 }
@@ -83,4 +83,8 @@ export function setupRenderEffect(instance, initialVnode, container) {
 
 export function getCurrentInstance() {
   return currentInstance;
+}
+
+export function setCurrentInstance(instance) {
+  currentInstance = instance;
 }
