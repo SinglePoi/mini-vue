@@ -5,21 +5,35 @@ import {
   setupComponent,
   setupRenderEffect,
 } from "./component";
+import { Fragment } from "./vnode";
 
 export function render(vnode, rootContainer) {
   patch(vnode, rootContainer);
 }
 
 export function patch(vnode, rootContainer) {
-  /**
-   * vnode.type: object | string
-   */
   const { type, shapeFlag } = vnode;
-  if (ShapeFlages.STATEFUL_COMPONENT & shapeFlag) {
-    processComponent(vnode, rootContainer);
-  } else if (ShapeFlages.ELEMENT & shapeFlag) {
-    processElement(vnode, rootContainer);
+
+  /**
+   * 设置一个 Fragment type，专门用于处理 children
+   */
+  switch (type) {
+    case Fragment:
+      processFragment(vnode, rootContainer);
+      break;
+
+    default:
+      if (ShapeFlages.STATEFUL_COMPONENT & shapeFlag) {
+        processComponent(vnode, rootContainer);
+      } else if (ShapeFlages.ELEMENT & shapeFlag) {
+        processElement(vnode, rootContainer);
+      }
+      break;
   }
+}
+
+function processFragment(vnode, rootContainer) {
+  mountChildren(vnode.children, rootContainer);
 }
 
 function processComponent(initialVnode, rootContainer) {

@@ -72,6 +72,7 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
 - 关于插槽，其实就是当 vnode 的 type 为组件时，这个时候走的是组件处理分支，此时 vnode 的 children 就是 slots
   - 具名插槽就是当 slots 为对象类型时，通过对象 key ，借用 renderSlots 工具函数根据 key 来进行对应的处理
   - 作用域插槽和具名插槽的处理方式类似，只不过是将 children 的属性值设置为了函数，这是为了方便子组件数据的传递，大致的思路是和 emit 差不多的。都是从目标对象中获取到对应属性名的属性值，然后调用的时候将准备好的变量通过函数参数进行传递
+- Fragment：vnode 的 type 之一，在此之前，插槽节点都需要挂载到 div 节点下，使得在父子节点之间就会多出一个 div 节点。Fragment 解决了这个问题
 
 ### 所得
 
