@@ -1,4 +1,4 @@
-import { h } from "../../../lib/mini-vue.esm.js";
+import { createTextVNode, h } from "../../../lib/mini-vue.esm.js";
 import Foo from "./Foo.js";
 export const App = {
   name: "App",
@@ -20,11 +20,11 @@ export const App = {
       footer: () => h("p", {}, "你好"),
     };
     const foo = h(Foo, {}, scopeSlots);
-    return h("div", {}, [app, foo]);
+    return h("div", {}, [createTextVNode("123"), foo]);
   },
   setup() {
     return {
-      msg: "in the setup module, we want to set props as a parameter in the setup function",
+      msg: "在实现 setup 时，props 应该作为 setup 函数的第一个参数",
     };
   },
 };

@@ -1,4 +1,4 @@
-import { h, renderSlots } from "../../../lib/mini-vue.esm.js";
+import { h, renderSlots, createTextVNode } from "../../../lib/mini-vue.esm.js";
 
 export const Foo = {
   name: "Foo",

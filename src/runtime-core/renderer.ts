@@ -5,13 +5,17 @@ import {
   setupComponent,
   setupRenderEffect,
 } from "./component";
-import { Fragment } from "./vnode";
+import { Fragment, Text } from "./vnode";
 
 export function render(vnode, rootContainer) {
   patch(vnode, rootContainer);
 }
 
 export function patch(vnode, rootContainer) {
+  if (!isObject(vnode)) {
+    console.error(`vnode must be an object`);
+  }
+
   const { type, shapeFlag } = vnode;
 
   /**
@@ -21,7 +25,9 @@ export function patch(vnode, rootContainer) {
     case Fragment:
       processFragment(vnode, rootContainer);
       break;
-
+    case Text:
+      processText(vnode, rootContainer);
+      break;
     default:
       if (ShapeFlages.STATEFUL_COMPONENT & shapeFlag) {
         processComponent(vnode, rootContainer);
@@ -30,6 +36,12 @@ export function patch(vnode, rootContainer) {
       }
       break;
   }
+}
+
+function processText(vnode, rootContainer) {
+  const { children } = vnode;
+  const textNode = (vnode.el = document.createTextNode(children));
+  rootContainer.append(textNode);
 }
 
 function processFragment(vnode, rootContainer) {
