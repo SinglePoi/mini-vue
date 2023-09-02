@@ -6,6 +6,8 @@ import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
 import { initSlots } from "./componentSlots";
 import { patch } from "./renderer";
 
+let currentInstance = null;
+
 export function createComponentInstance(vnode) {
   const instance = {
     vnode,
@@ -38,10 +40,16 @@ function setupStatefulComponent(instance) {
   instance.proxy = new Proxy({ _: instance }, PublicInstanceProxyHandlers);
 
   if (setup) {
+    /**
+     * 为什么要在这里赋值
+     * 目的是在 setup 函数中可以使用 getCurrentInstance
+     * 如果没有 setup 函数当然就不需要 currentInstance 了
+     */
+    currentInstance = instance;
     const setupResult = setup(shallowReadonly(props), {
       emit,
     });
-
+    currentInstance = null;
     handlerSetupResult(instance, setupResult);
   }
 }
@@ -71,4 +79,8 @@ export function setupRenderEffect(instance, initialVnode, container) {
 
   // 在整个 element 渲染完毕后，再将 elementVnode 上的 el 赋值给当前组件的 el
   initialVnode.el = subTree.el;
+}
+
+export function getCurrentInstance() {
+  return currentInstance;
 }
