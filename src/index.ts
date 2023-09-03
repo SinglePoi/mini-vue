@@ -1,1 +1,1 @@
-export * from "./runtime-core/index"; // runtime-core
+export * from "./runtime-dom/index";

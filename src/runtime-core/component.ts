@@ -4,7 +4,7 @@ import { emit } from "./componentEmit";
 import { initProps } from "./componentProps";
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
 import { initSlots } from "./componentSlots";
-import { patch } from "./renderer";
+import { createRenderer } from "./renderer";
 
 let currentInstance = null;
 
@@ -73,14 +73,6 @@ function finishComponentSetup(instance) {
   if (Component.render) {
     instance.render = Component.render;
   }
-}
-
-export function setupRenderEffect(instance, initialVnode, container) {
-  const subTree = instance.render.call(instance.proxy);
-  patch(subTree, container, instance);
-
-  // 在整个 element 渲染完毕后，再将 elementVnode 上的 el 赋值给当前组件的 el
-  initialVnode.el = subTree.el;
 }
 
 export function getCurrentInstance() {
