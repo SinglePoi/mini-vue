@@ -8,13 +8,15 @@ import { patch } from "./renderer";
 
 let currentInstance = null;
 
-export function createComponentInstance(vnode) {
+export function createComponentInstance(vnode, parent) {
   const instance = {
     vnode,
     type: vnode.type,
     props: {},
     slots: {},
     setupState: {},
+    provides: parent ? parent.provides : {},
+    parent,
     emit: () => {},
   };
 
@@ -75,7 +77,7 @@ function finishComponentSetup(instance) {
 
 export function setupRenderEffect(instance, initialVnode, container) {
   const subTree = instance.render.call(instance.proxy);
-  patch(subTree, container);
+  patch(subTree, container, instance);
 
   // 在整个 element 渲染完毕后，再将 elementVnode 上的 el 赋值给当前组件的 el
   initialVnode.el = subTree.el;

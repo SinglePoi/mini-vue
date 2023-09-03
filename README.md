@@ -75,6 +75,7 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
 - Fragment：vnode 的 type 之一，在此之前，插槽节点都需要挂载到 div 节点下，使得在父子节点之间就会多出一个 div 节点。Fragment 解决了这个问题
 - 目前为止，children 如果是一个数组，其中是不接受 string 字面量的。现在新增 Text 节点，当 vnode 为 Text 类型时，挂载 textNode
 - getCurrentInstance 可以使用户在 setup 函数中获取到当前的虚拟节点对象
+- provide/inject 具备跨组件传递的状态变量的能力，具备原型链的特点~因为是用原型链做的~，provide 的值是挂载到当前组件实例上的，如同 props slots 等
 
 ### 所得
 
