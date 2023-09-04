@@ -77,6 +77,7 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
 - getCurrentInstance 可以使用户在 setup 函数中获取到当前的虚拟节点对象
 - provide/inject 具备跨组件传递的状态变量的能力，具备原型链的特点~因为是用原型链做的~，provide 的值是挂载到当前组件实例上的，如同 props slots 等
 - 为了实现自定义 render API 的能力，重构 renderer.ts 的内容，以闭包的方式，使 createRenderer 作为上层函数，接受自定义的 render 函数。规定其创建节点的函数名为 createElement、渲染节点的函数名为 patchProp、挂载节点的函数名为 insert。createRenderer 函数返回 createAPI 节点，createAPI 函数由 createApp 函数重构而来，使 createAPI 作为上层函数，同样以 render 函数为参数。
+- 视图的更新，同样通过 effect 的依赖收集和触发依赖实现。同时，为了满足对新老 vnode 的对比，扩容 patch 的参数个数，增加对更新前 vnode 的参数
 
 ### 所得
 
