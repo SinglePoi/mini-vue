@@ -10,13 +10,18 @@ function createElement(type) {
 
   return document.createElement(type);
 }
-function patchProp(el, key, value) {
+function patchProp(el, key, prevProp, nextProp) {
   console.log("patchProp---------------", el);
   if (isOn(key)) {
     const event = key.slice(2).toLowerCase();
-    el.addEventListener(event, value);
+    el.addEventListener(event, nextProp);
   } else {
-    el.setAttribute(key, value);
+    // 场景二：当新节点对比旧节点的属性值为 null 或 undefined 时，应该去删除这部分 props
+    if (nextProp === undefined || nextProp === null) {
+      el.removeAttribute(key);
+    } else {
+      el.setAttribute(key, nextProp);
+    }
   }
 }
 function insert(el, parent) {
