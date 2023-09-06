@@ -10,6 +10,8 @@ export function createRenderer(options) {
     createElement: hostCreateElement,
     patchProp: hostPatchProp,
     insert: hostInsert,
+    remove: hostRemove,
+    setElementText: hostSetElementText,
   } = options;
 
   function render(vnode, rootContainer) {
@@ -115,11 +117,11 @@ export function createRenderer(options) {
     if (!n1) {
       mountElement(n2, rootContainer, parentComponent);
     } else {
-      patchElement(n1, n2, rootContainer);
+      patchElement(n1, n2, rootContainer, parentComponent);
     }
   }
 
-  function patchElement(n1, n2, rootContainer) {
+  function patchElement(n1, n2, rootContainer, parentComponent) {
     // props
     const oldProps = n1.props || EMPTY_OBJ;
     const newProps = n2.props || EMPTY_OBJ;
@@ -131,7 +133,52 @@ export function createRenderer(options) {
      */
     const el = (n2.el = n1.el);
 
+    patchChildren(n1, n2, el, parentComponent);
+
     patchProps(el, oldProps, newProps);
+  }
+
+  function patchChildren(n1, n2, containrt, parentComponent) {
+    /**
+     * 场景1：老元素为数组，新元素为文本，除旧迎新
+     * 场景2：新老元素都是文本，新文本覆盖旧文本
+     */
+
+    const prevShapeFlag = n1.shapeFlag;
+    const nextShapeFlag = n2.shapeFlag;
+    const c1 = n1.children;
+    const c2 = n2.children;
+
+    // 以新元素为主
+    // 当新元素为文本时
+    if (nextShapeFlag & ShapeFlages.TEXT_CHILDREN) {
+      // 当老元素为数组时
+      if (prevShapeFlag & ShapeFlages.ARRAY_CHILDREN) {
+        // 删除老元素
+        hostRemove(c1);
+      }
+      // 如果新老元素不同，且新元素为文本
+      if (c1 !== c2) {
+        hostSetElementText(containrt, n2);
+      }
+    } else {
+      // 如果新元素是数组
+      // 当老元素为文本时
+      if (prevShapeFlag & ShapeFlages.TEXT_CHILDREN) {
+        // 清空文本
+        hostSetElementText(containrt, "");
+        // 创建元素
+        mountChildren(c2, containrt, parentComponent);
+      }
+    }
+  }
+
+  function unmountChildren(children) {
+    for (let i = 0; i < children.length; i++) {
+      // 获取到元素
+      const el = children[i].el;
+      hostRemove(el);
+    }
   }
 
   function patchProps(el, oldProps, newProps) {
