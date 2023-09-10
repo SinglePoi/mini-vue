@@ -24,9 +24,10 @@ function patchProp(el, key, prevProp, nextProp) {
     }
   }
 }
-function insert(el, parent) {
-  console.log("insert---------------", el);
-  parent.append(el);
+function insert(child, parent, anchor = null) {
+  console.log("insert---------------", child, anchor);
+  // parent.append(el);
+  parent.insertBefore(child, anchor);
 }
 
 function remove(child) {
