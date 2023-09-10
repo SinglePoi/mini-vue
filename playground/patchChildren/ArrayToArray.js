@@ -44,12 +44,50 @@ import { ref, h } from "../../lib/mini-vue.esm.js";
 //   h("div", { key: "B" }, "B"),
 // ];
 
-const nextChildren = [h("div", { key: "A" }, "A"), h("div", { key: "B" }, "B")];
+// const nextChildren = [h("div", { key: "A" }, "A"), h("div", { key: "B" }, "B")];
+// const prevChildren = [
+//   h("div", { key: "C" }, "C"),
+//   h("div", { key: "D" }, "D"),
+//   h("div", { key: "A" }, "A"),
+//   h("div", { key: "B" }, "B"),
+// ];
+
+/**
+ * 中间对比
+ */
+// const prevChildren = [
+//   h("div", { key: "A" }, "A"),
+//   h("div", { key: "B" }, "B"),
+//   h("div", { key: "C", id: "prev-C" }, "C"),
+//   h("div", { key: "D" }, "D"),
+//   h("div", { key: "F" }, "F"),
+//   h("div", { key: "G" }, "G"),
+// ];
+// const nextChildren = [
+//   h("div", { key: "A" }, "A"),
+//   h("div", { key: "B" }, "B"),
+//   h("div", { key: "E" }, "E"),
+//   h("div", { key: "C", id: "next-C" }, "C"),
+//   h("div", { key: "F" }, "F"),
+//   h("div", { key: "G" }, "G"),
+// ];
+
 const prevChildren = [
-  h("div", { key: "C" }, "C"),
-  h("div", { key: "D" }, "D"),
   h("div", { key: "A" }, "A"),
   h("div", { key: "B" }, "B"),
+  h("div", { key: "C", id: "prev-C" }, "C"),
+  h("div", { key: "E" }, "E"),
+  h("div", { key: "D" }, "D"),
+  h("div", { key: "F" }, "F"),
+  h("div", { key: "G" }, "G"),
+];
+const nextChildren = [
+  h("div", { key: "A" }, "A"),
+  h("div", { key: "B" }, "B"),
+  h("div", { key: "E" }, "E"),
+  h("div", { key: "C", id: "next-C" }, "C"),
+  h("div", { key: "F" }, "F"),
+  h("div", { key: "G" }, "G"),
 ];
 
 export default {
