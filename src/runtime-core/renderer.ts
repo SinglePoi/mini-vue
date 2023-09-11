@@ -3,6 +3,7 @@ import { ShapeFlages } from "../shared/ShapeFlags";
 import { EMPTY_OBJ, isObject } from "../shared/index";
 import { createComponentInstance, setupComponent } from "./component";
 import { createAppAPI } from "./createApp";
+import { getSequence } from "./helpers/getSequence";
 import { Fragment, Text } from "./vnode";
 
 export function createRenderer(options) {
@@ -138,7 +139,7 @@ export function createRenderer(options) {
     patchProps(el, oldProps, newProps);
   }
 
-  function patchChildren(n1, n2, containrt, parentComponent, anchor) {
+  function patchChildren(n1, n2, container, parentComponent, anchor) {
     /**
      * 场景1：老节点为数组，新节点为文本，除旧迎新
      * 场景2：新老节点都是文本，新文本覆盖旧文本
@@ -159,19 +160,19 @@ export function createRenderer(options) {
       }
       // 如果新老节点不同，且新节点为文本
       if (c1 !== c2) {
-        hostSetElementText(containrt, n2);
+        hostSetElementText(container, n2);
       }
     } else {
       // 如果新节点是数组
       // 当老节点为文本时
       if (prevShapeFlag & ShapeFlages.TEXT_CHILDREN) {
         // 清空文本
-        hostSetElementText(containrt, "");
+        hostSetElementText(container, "");
         // 创建节点
-        mountChildren(c2, containrt, parentComponent, anchor);
+        mountChildren(c2, container, parentComponent, anchor);
       } else {
         // 当新老节点都是数组时
-        patchKeyedChildren(c1, c2, containrt, parentComponent, anchor);
+        patchKeyedChildren(c1, c2, container, parentComponent, anchor);
       }
     }
   }
@@ -181,7 +182,7 @@ export function createRenderer(options) {
    * @param c1 老节点
    * @param c2 新节点
    */
-  function patchKeyedChildren(c1, c2, containrt, parentComponent, anchor) {
+  function patchKeyedChildren(c1, c2, container, parentComponent, anchor) {
     let i = 0;
     const l2 = c2.length;
     let e1 = c1.length - 1;
@@ -196,7 +197,7 @@ export function createRenderer(options) {
       const n2 = c2[i];
 
       if (isSameVNodeType(n1, n2)) {
-        patch(n1, n2, containrt, parentComponent, anchor);
+        patch(n1, n2, container, parentComponent, anchor);
       } else {
         break;
       }
@@ -209,7 +210,7 @@ export function createRenderer(options) {
       const n1 = c1[e1];
       const n2 = c2[e2];
       if (isSameVNodeType(n1, n2)) {
-        patch(n1, n2, containrt, parentComponent, anchor);
+        patch(n1, n2, container, parentComponent, anchor);
       } else {
         break;
       }
@@ -227,7 +228,7 @@ export function createRenderer(options) {
         const nextPos = e2 + 1;
         const anchor = nextPos < l2 ? c2[nextPos].el : null;
         while (i <= e2) {
-          patch(null, c2[i], containrt, parentComponent, anchor);
+          patch(null, c2[i], container, parentComponent, anchor);
           i++;
         }
       }
@@ -237,58 +238,104 @@ export function createRenderer(options) {
         hostRemove(c1[i].el);
         i++;
       }
-    }
+    } else {
+      // 中间对比
+      let s1 = i;
+      let s2 = i;
 
-    // 中间对比
+      // 新节点中间位置的个数
+      const toBePatched = e2 - s2 + 1;
+      // 新节点中间位置处理完成的节点个数
+      let patched = 0;
+      // 新节点索引
+      const keyIndexMap = new Map();
+      // 新节点中间数组下标索引
+      // 数据结构：新节点的下表 -> 对应的老节点下标
+      const newIndexToOldIndexMap = new Array(toBePatched);
+      newIndexToOldIndexMap.fill(0);
 
-    let s1 = i;
-    let s2 = i;
+      // 新节点是否需要移动
+      let moved = false;
+      // 记录最后一位新节点下标，如果记录的下标大于当前节点的下标，说明新节点时需要移动的
+      let maxNewIndexSoFar = 0;
 
-    // 新节点中间位置的个数
-    const toBePatched = e2 - s2 + 1;
-    // 新节点中间位置处理完成的节点个数
-    let patched = 0;
-    // 新节点索引
-    const keyIndexMap = new Map();
-
-    // 获取新节点的中间数组，方便查找老节点是否存在于新节点数组中
-    for (let i = s2; i <= e2; i++) {
-      const n2 = c2[i];
-      keyIndexMap.set(n2.key, i);
-    }
-    // 查找老节点是否存在于新节点数组中
-    for (let i = s1; i <= e1; i++) {
-      let newIndex;
-      const n1 = c1[i];
-
-      // 当新节点中间部分都处理完毕之后，老节点剩下的部分就可以直接删除了
-      if (patched >= toBePatched) {
-        hostRemove(n1.el);
-        continue;
+      /**
+       * 获取新节点的中间数组
+       * 数据结构： key -> index
+       * index: 节点所在数组的下标
+       */
+      for (let i = s2; i <= e2; i++) {
+        const n2 = c2[i];
+        keyIndexMap.set(n2.key, i);
       }
 
-      // 如果定义了 key
-      if (n1.key != null) {
-        newIndex = keyIndexMap.get(n1.key);
-      } else {
-        // 没有定义 key，需要遍历新节点数组查找是否存在
-        for (let j = s2; j < e2; j++) {
-          const n2 = c2[j];
-          if (isSameVNodeType(n1, n2)) {
-            newIndex = j;
+      // 查找老节点是否存在于新节点数组中
+      for (let i = s1; i <= e1; i++) {
+        // 新节点数组中【与老节点相同节点】的下标
+        let newIndex;
+        const n1 = c1[i];
 
-            break;
+        // 当新节点中间部分都处理完毕之后，老节点剩下的部分就可以直接删除了
+        if (patched >= toBePatched) {
+          hostRemove(n1.el);
+          continue;
+        }
+
+        // 如果定义了 key
+        if (n1.key != null) {
+          newIndex = keyIndexMap.get(n1.key);
+        } else {
+          // 没有定义 key，需要遍历新节点数组查找是否存在
+          for (let j = s2; j <= e2; j++) {
+            const n2 = c2[j];
+            if (isSameVNodeType(n1, n2)) {
+              newIndex = j;
+
+              break;
+            }
           }
+        }
+
+        // 如果没有找到老节点在新数组中的位置，应该删除老节点
+        if (newIndex === undefined) {
+          hostRemove(n1.el);
+        } else {
+          if (newIndex >= maxNewIndexSoFar) {
+            maxNewIndexSoFar = newIndex;
+          } else {
+            moved = true;
+          }
+
+          newIndexToOldIndexMap[newIndex - s2] = i + 1;
+          // 如果存在，递归判断他的子节点
+          patch(n1, c2[newIndex], container, parentComponent, null);
+          patched++;
         }
       }
 
-      // 如果没有找到老节点在新数组中的位置，应该删除老节点
-      if (newIndex === undefined) {
-        hostRemove(n1.el);
-      } else {
-        // 如果存在，递归判断他的子节点
-        patch(n1, c2[newIndex], containrt, parentComponent, null);
-        patched++;
+      // 最长自增子序列
+      const newIndexSequence = moved ? getSequence(newIndexToOldIndexMap) : [];
+
+      let j = newIndexSequence.length - 1;
+      for (let i = toBePatched - 1; i >= 0; i--) {
+        // 新节点数组中部数组的最后一位下标
+        const nextIndex = i + s2;
+        // 新节点数组中部数组的最后一个节点
+        const nextChild = c2[nextIndex];
+        // 锚点，最后一个节点的下一个节点
+        const anchor = nextIndex + 1 < l2 ? c2[nextIndex + 1].el : null;
+
+        if (newIndexToOldIndexMap[i] === 0) {
+          patch(null, nextChild, container, parentComponent, anchor);
+        } else if (moved) {
+          const newIndex = newIndexSequence[j];
+          if (j < 0 || i !== newIndex) {
+            console.log("移动位置");
+            hostInsert(nextChild.el, container, anchor);
+          } else {
+            j--;
+          }
+        }
       }
     }
   }
