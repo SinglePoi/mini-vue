@@ -2,6 +2,7 @@ import { effect } from "../reactivity/src/effect";
 import { ShapeFlages } from "../shared/ShapeFlags";
 import { EMPTY_OBJ, isObject } from "../shared/index";
 import { createComponentInstance, setupComponent } from "./component";
+import { shouldUpdateComponet } from "./componentUpdateUtils";
 import { createAppAPI } from "./createApp";
 import { getSequence } from "./helpers/getSequence";
 import { Fragment, Text } from "./vnode";
@@ -64,13 +65,32 @@ export function createRenderer(options) {
   }
 
   function processComponent(n1, n2, rootContainer, parentComponent, anchor) {
-    // updateComponent
-    mountComponent(n2, rootContainer, parentComponent, anchor);
+    if (!n1) {
+      mountComponent(n2, rootContainer, parentComponent, anchor);
+    } else {
+      updateComponent(n1, n2);
+    }
+  }
+
+  function updateComponent(n1, n2) {
+    const instance = (n2.component = n1.component);
+    // 父组件的状态发生变更后，子组件会进入更新流程
+    // 但是如果更新前后的 props 没有发生变化，此时不应该去更新
+    if (shouldUpdateComponet(n1, n2)) {
+      instance.next = n2;
+      instance.update();
+    } else {
+      n2.el = n1.el;
+      instance.vnode = n2;
+    }
   }
 
   function mountComponent(vnode, rootContainer, parentComponent, anchor) {
     // 通过 vnode 创建的实例对象，用于处理 props、slots、setup
-    const instance = createComponentInstance(vnode, parentComponent);
+    const instance = (vnode.component = createComponentInstance(
+      vnode,
+      parentComponent
+    ));
 
     // 去装载 props、slots、setup、render，这一过程可以认为是一种装箱
     setupComponent(instance);
@@ -83,7 +103,7 @@ export function createRenderer(options) {
     /**
      * 使用 effect 将渲染函数作为依赖收集起来
      */
-    effect(() => {
+    instance.update = effect(() => {
       if (!instance.isMounted) {
         console.log("初始化组件");
 
@@ -98,9 +118,14 @@ export function createRenderer(options) {
         instance.isMounted = true;
       } else {
         console.log("更新组件");
+        const { proxy, next, vnode } = instance;
+        if (next) {
+          next.el = vnode.el;
+          updateComponentPreRender(instance, next);
+        }
 
         // 拿到本次更新的 render
-        const subTree = instance.render.call(instance.proxy);
+        const subTree = instance.render.call(proxy);
         // 拿到更新前的 render
         const prevSubTree = instance.subTree;
         // 将本次更新的 render 赋值给 instance 作为下次更新前的 render
@@ -160,7 +185,7 @@ export function createRenderer(options) {
       }
       // 如果新老节点不同，且新节点为文本
       if (c1 !== c2) {
-        hostSetElementText(container, n2);
+        hostSetElementText(container, c2);
       }
     } else {
       // 如果新节点是数组
@@ -406,4 +431,10 @@ export function createRenderer(options) {
   return {
     createApp: createAppAPI(render),
   };
+}
+
+function updateComponentPreRender(instance, nextVNode) {
+  instance.vnode = nextVNode;
+  instance.next = null;
+  instance.props = nextVNode.props;
 }
