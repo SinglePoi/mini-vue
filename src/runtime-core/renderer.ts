@@ -1,3 +1,4 @@
+import { scheduler } from "timers/promises";
 import { effect } from "../reactivity/src/effect";
 import { ShapeFlages } from "../shared/ShapeFlags";
 import { EMPTY_OBJ, isObject } from "../shared/index";
@@ -6,6 +7,7 @@ import { shouldUpdateComponet } from "./componentUpdateUtils";
 import { createAppAPI } from "./createApp";
 import { getSequence } from "./helpers/getSequence";
 import { Fragment, Text } from "./vnode";
+import { queueJobs } from "./queueJobs";
 
 export function createRenderer(options) {
   const {
@@ -103,40 +105,48 @@ export function createRenderer(options) {
     /**
      * 使用 effect 将渲染函数作为依赖收集起来
      */
-    instance.update = effect(() => {
-      if (!instance.isMounted) {
-        console.log("初始化组件");
+    instance.update = effect(
+      () => {
+        if (!instance.isMounted) {
+          console.log("初始化组件");
 
-        const subTree = (instance.subTree = instance.render.call(
-          instance.proxy
-        ));
-        patch(null, subTree, container, instance, anchor);
+          const subTree = (instance.subTree = instance.render.call(
+            instance.proxy
+          ));
+          patch(null, subTree, container, instance, anchor);
 
-        // 在整个 element 渲染完毕后，再将 elementVnode 上的 el 赋值给当前组件的 el
-        initialVnode.el = subTree.el;
+          // 在整个 element 渲染完毕后，再将 elementVnode 上的 el 赋值给当前组件的 el
+          initialVnode.el = subTree.el;
 
-        instance.isMounted = true;
-      } else {
-        console.log("更新组件");
-        const { proxy, next, vnode } = instance;
-        if (next) {
-          next.el = vnode.el;
-          updateComponentPreRender(instance, next);
+          instance.isMounted = true;
+        } else {
+          console.log("更新组件");
+          const { proxy, next, vnode } = instance;
+          if (next) {
+            next.el = vnode.el;
+            updateComponentPreRender(instance, next);
+          }
+
+          // 拿到本次更新的 render
+          const subTree = instance.render.call(proxy);
+          // 拿到更新前的 render
+          const prevSubTree = instance.subTree;
+          // 将本次更新的 render 赋值给 instance 作为下次更新前的 render
+          instance.subTree = subTree;
+
+          patch(prevSubTree, subTree, container, instance, anchor);
+
+          console.log("current", subTree);
+          console.log("prevSubTree", prevSubTree);
         }
-
-        // 拿到本次更新的 render
-        const subTree = instance.render.call(proxy);
-        // 拿到更新前的 render
-        const prevSubTree = instance.subTree;
-        // 将本次更新的 render 赋值给 instance 作为下次更新前的 render
-        instance.subTree = subTree;
-
-        patch(prevSubTree, subTree, container, instance, anchor);
-
-        console.log("current", subTree);
-        console.log("prevSubTree", prevSubTree);
+      },
+      {
+        scheduler() {
+          console.log("----update");
+          queueJobs(instance.update);
+        },
       }
-    });
+    );
   }
 
   function processElement(n1, n2, rootContainer, parentComponent, anchor) {
