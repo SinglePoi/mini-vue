@@ -1,4 +1,4 @@
-import { Nodes } from "../src/ast";
+import { NodeTypes } from "../src/ast";
 import { baseParse } from "../src/parse";
 
 describe("Parse", () => {
@@ -7,9 +7,9 @@ describe("Parse", () => {
       const ast = baseParse("{{ msg }}");
 
       expect(ast.children[0]).toStrictEqual({
-        type: Nodes.INTERPOLATION,
+        type: NodeTypes.INTERPOLATION,
         content: {
-          type: Nodes.SIMPLE_EXPRESSON,
+          type: NodeTypes.SIMPLE_EXPRESSON,
           content: "msg",
         },
       });
@@ -21,8 +21,19 @@ describe("Parse", () => {
       const ast = baseParse("<div></div>");
 
       expect(ast.children[0]).toStrictEqual({
-        type: Nodes.ELEMENT,
+        type: NodeTypes.ELEMENT,
         tag: "div",
+      });
+    });
+  });
+
+  describe("文本解析", () => {
+    test("简单文本", () => {
+      const ast = baseParse("some text");
+
+      expect(ast.children[0]).toStrictEqual({
+        type: NodeTypes.TEXT,
+        content: "some text",
       });
     });
   });

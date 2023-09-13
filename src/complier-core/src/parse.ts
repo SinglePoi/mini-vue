@@ -1,4 +1,4 @@
-import { Nodes } from "./ast";
+import { NodeTypes } from "./ast";
 
 const enum TagType {
   START,
@@ -15,6 +15,7 @@ function parseChildren(context) {
   const nodes: any[] = [];
   let node;
   const s = context.source;
+
   if (s.startsWith("{{")) {
     // 如果字符以 {{ 开头，认为是插值
     node = parseInterpolation(context);
@@ -24,14 +25,33 @@ function parseChildren(context) {
     }
   }
 
+  if (!node) {
+    node = parseText(context);
+  }
+
   nodes.push(node);
 
   return nodes;
 }
+function parseTextData(context, length) {
+  const content = context.source.slice(0, length);
+  advanceBy(context, length);
+
+  return content;
+}
+
+function parseText(context) {
+  const content = parseTextData(context, context.source.length);
+  console.log(context.source.length);
+
+  return {
+    type: NodeTypes.TEXT,
+    content,
+  };
+}
 
 function parseElement(context) {
   const tag = parseTag(context, TagType.START);
-
   parseTag(context, TagType.END);
 
   return tag;
@@ -42,13 +62,11 @@ function parseTag(context, type: TagType) {
   const match: any = /^<\/?([a-z]*)/i.exec(context.source);
   // div
   const tag = match[1];
-
   advanceBy(context, match[0].length + 1);
-
   if (type === TagType.END) return;
 
   return {
-    type: Nodes.ELEMENT,
+    type: NodeTypes.ELEMENT,
     tag,
   };
 }
@@ -63,21 +81,16 @@ function parseInterpolation(context) {
 
   // 推进下一步处理
   advanceBy(context, startIndex); // msg}}
-
   const rawContentLength = closeIndex - startIndex;
-
-  const content = context.source.slice(0, rawContentLength).trim(); // msg
-
-  console.log("content", content);
-
+  const content = parseTextData(context, rawContentLength).trim();
   // 推进下一步处理
-  advanceBy(context, rawContentLength + closeDelimiter.length);
+  advanceBy(context, closeDelimiter.length);
 
   return {
-    type: Nodes.INTERPOLATION,
+    type: NodeTypes.INTERPOLATION,
     content: {
-      type: Nodes.SIMPLE_EXPRESSON,
-      content: content,
+      type: NodeTypes.SIMPLE_EXPRESSON,
+      content,
     },
   };
 }
