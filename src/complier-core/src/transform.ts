@@ -1,9 +1,17 @@
-export function transform(root, options) {
+export function transform(root, options = {}) {
   // 创建上下文对象
   const context = createTransformContext(root, options);
   // 遍历树 - 深度优先搜索
   traverseNode(root, context);
+
+  // 创建
+  createCodegenNode(root);
 }
+
+function createCodegenNode(root) {
+  root.codegenNode = root.children[0];
+}
+
 function traverseNode(node: any, context) {
   // 获取自定义插件
   const transformNode = context.nodeTransforms;
