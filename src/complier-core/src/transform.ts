@@ -10,11 +10,17 @@ export function transform(root, options = {}) {
   // 生成需要代码生成的内容
   createCodegenNode(root);
 
+  // 不同节点对应的处理方法，一般在 Vue 包中
   root.helpers = [...context.helpers.keys()];
 }
 
 function createCodegenNode(root) {
-  root.codegenNode = root.children[0];
+  const child = root.children[0];
+  if (child.type === NodeTypes.ELEMENT) {
+    root.codegenNode = child.codegenNode;
+  } else {
+    root.codegenNode = root.children[0];
+  }
 }
 /**
  *
@@ -25,10 +31,13 @@ function traverseNode(node: any, context) {
   // 获取自定义插件
   const transformNode = context.nodeTransforms;
 
+  const exitFns: any = [];
+
   // 执行插件规则
   for (let i = 0; i < transformNode.length; i++) {
     const transform = transformNode[i];
-    transform(node);
+    const onExit = transform(node, context);
+    if (onExit) exitFns.push(onExit);
   }
 
   // 添加不同的节点类型的处理函数
@@ -44,6 +53,11 @@ function traverseNode(node: any, context) {
       break;
     default:
       break;
+  }
+
+  let i = exitFns.length;
+  while (i--) {
+    exitFns[i]();
   }
 }
 

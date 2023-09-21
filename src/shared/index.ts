@@ -4,6 +4,10 @@ export function isObject(target: unknown) {
   return target != null && typeof target === "object";
 }
 
+export function isString(target: unknown) {
+  return typeof target === "string";
+}
+
 export const hasChanged = (newValue, oldValue) => {
   return !Object.is(newValue, oldValue);
 };

@@ -1,5 +1,10 @@
+import { isString } from "../../shared";
 import { NodeTypes } from "./ast";
-import { TO_DISPLAY_STRING, helperMapName } from "./runtimeHelpers";
+import {
+  CREATE_ELEMENT_VNODE,
+  TO_DISPLAY_STRING,
+  helperMapName,
+} from "./runtimeHelpers";
 
 export function generate(ast) {
   // 创建上下文对象
@@ -61,9 +66,65 @@ function genNode(node: any, context: any) {
     case NodeTypes.SIMPLE_EXPRESSON:
       genExpresson(node, context);
       break;
+    case NodeTypes.ELEMENT:
+      genElement(node, context);
+      break;
+    case NodeTypes.COMPOUND_EXPRESSION:
+      genCompoundExpression(node, context);
+      break;
     default:
       break;
   }
+}
+
+function genCompoundExpression(node, context) {
+  const { push } = context;
+  const children = node.chidlren;
+
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (isString(child)) {
+      push(child);
+    } else {
+      genNode(child, context);
+    }
+  }
+}
+
+function genElement(node, context) {
+  const { push, helper } = context;
+  const { tag, children, props } = node;
+  push(` ${helper(CREATE_ELEMENT_VNODE)}(`);
+  genNodeList(genNullable([tag, props, children]), context);
+  // genNode(children, context);
+  // 对 children 循环拼接
+  // for (let i = 0; i < children.length; i++) {
+  //   const child = children[i];
+  //   genNode(child, context);
+  // }
+
+  push(")");
+}
+
+function genNodeList(nodes, context) {
+  const { push } = context;
+
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (isString(node) || node === null) {
+      push(" " + node);
+    } else {
+      genNode(node, context);
+    }
+
+    if (i < nodes.length - 1) {
+      push(",");
+    }
+  }
+}
+
+function genNullable(args) {
+  return args.map((i) => i || null);
 }
 
 function genExpresson(node, context) {
