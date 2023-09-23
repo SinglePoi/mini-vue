@@ -10,7 +10,6 @@ export function generate(ast) {
   // 创建上下文对象
   const context = createCodegenContext();
   const { push } = context;
-  push("return");
 
   // 生成导入文本
   genFuntionPreamble(ast, context);
@@ -31,11 +30,11 @@ export function generate(ast) {
 
 // 文件头部的导入
 function genFuntionPreamble(ast, context) {
-  const VueBinging = "vue";
+  const VueBinging = "Vue";
   const aliasHelper = (v) => `${helperMapName[v]}: _${helperMapName[v]}`;
   if (ast.helpers.length > 0) {
     context.push(
-      ` const { ${ast.helpers.map(aliasHelper).join(",")} } = "${VueBinging}"\n`
+      ` const { ${ast.helpers.map(aliasHelper).join(",")} } = ${VueBinging}\n`
     );
   }
 }

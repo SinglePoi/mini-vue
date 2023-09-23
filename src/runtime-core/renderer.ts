@@ -111,6 +111,7 @@ export function createRenderer(options) {
           console.log("初始化组件");
 
           const subTree = (instance.subTree = instance.render.call(
+            instance.proxy,
             instance.proxy
           ));
           patch(null, subTree, container, instance, anchor);
@@ -128,7 +129,7 @@ export function createRenderer(options) {
           }
 
           // 拿到本次更新的 render
-          const subTree = instance.render.call(proxy);
+          const subTree = instance.render.call(proxy, proxy);
           // 拿到更新前的 render
           const prevSubTree = instance.subTree;
           // 将本次更新的 render 赋值给 instance 作为下次更新前的 render
