@@ -1,16 +1,15 @@
-import pkg from "./package.json" assert { type: "json" };
 import typescript from "@rollup/plugin-typescript";
 export default {
-  input: "./src/index.ts", // 入口文件
+  input: "./packages/vue/src/index.ts", // 入口文件
   output: [
     // 打包输出文件
     {
       format: "cjs",
-      file: pkg.main,
+      file: "packages/vue/dist/hello-vue.cjs.js",
     },
     {
       format: "esm",
-      file: pkg.module,
+      file: "packages/vue/dist/hello-vue.esm.js",
     },
   ],
   plugins: [typescript()],
