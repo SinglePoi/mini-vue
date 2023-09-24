@@ -5,5 +5,6 @@ export { getCurrentInstance, registerRuntimeCompiler } from "./component";
 export { inject, provide } from "./apiInject";
 export { createRenderer } from "./renderer";
 export { nextTick } from "./queueJobs";
-export { toDisplayString } from "../../shared";
+export { toDisplayString } from "@hello-vue/shared";
+export * from "./apiWatch";
 export * from "../../reactivity";

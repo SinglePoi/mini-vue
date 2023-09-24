@@ -1,4 +1,4 @@
-## mini-vue-annotation
+## hello-vue
 
 本项目中 Vue3 的学习方式是：
 
