@@ -1,7 +1,7 @@
 <h1 align="center">hello-vue</h1> 
 <p align="center"> vue 的简单实现 </p>
 
-![Static Badge](https://img.shields.io/badge/vue-core-blue?labelColor=green)
+<p><img src="https://img.shields.io/badge/vue-code-blue?labelColor=green" alt="NPM version"></p>
 
 ### 结构目录
 
@@ -47,9 +47,14 @@
 
 ## 技术栈
 
-- :surfer: 单元测试 - 使用 vitest 代替 jest 
+- :surfer: 单元测试 - 使用 vitest 代替 jest
 - :pill: 类型校验 - ~~TypeScript？~~ AnyScript！
 - :pencil2: 类库打包 - rollup
+
+## 计划
+
+- [x] 首先学习 mini-vue ，建立对 Vue 源码的初步印象，作为入门 Vue 源码学习的第一步
+- [ ] 通过官方的测试用例，补充完善功能代码，同步学习 TypeScript 的使用
 
 ## 介绍
 
@@ -94,7 +99,7 @@
     - 如何缓存：第一次执行时，将结果存储至私有属性中；下次执行时，如果依赖的 reactive 对象没有发生变化时，直接返回该私有属性的值
     - 如何判断响应式对象没有发生变化？设置一个中间值，为 true 时认为发生了变化。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
 
-#### runtime-core 
+#### runtime-core
 
 主要负责组件的挂载，将组件转化为 vnode，需要具备 render 函数和 setup 函数。render 函数用于处理组件的内容，setup 用于处理注解的状态
 render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props children 三个属性。type 具备两种类型：object 和 string；
@@ -112,11 +117,9 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
 - setup(props, {emit})
   - 其一，将 props 作为 setup 的参数
   - 其二，emit 的本质是查找 props 中是否存在对应的 onEvent 函数，去调用该函数，其中使用了 bind 去改写了 emit 的 this 指向，使当前组件实例对象永远作为参数之一，不需要用户去额外传入
-  
 - 关于插槽，其实就是当 vnode 的 type 为组件时，这个时候走的是组件处理分支，此时 vnode 的 children 就是 slots
   - 具名插槽就是当 slots 为对象类型时，通过对象 key ，借用 renderSlots 工具函数根据 key 来进行对应的处理
   - 作用域插槽和具名插槽的处理方式类似，只不过是将 children 的属性值设置为了函数，这是为了方便子组件数据的传递，大致的思路是和 emit 差不多的。都是从目标对象中获取到对应属性名的属性值，然后调用的时候将准备好的变量通过函数参数进行传递
-  
 - Fragment：vnode 的 type 之一，在此之前，插槽节点都需要挂载到 div 节点下，使得在父子节点之间就会多出一个 div 节点。Fragment 解决了这个问题
 
 - 目前为止，children 如果是一个数组，其中是不接受 string 字面量的。现在新增 Text 节点，当 vnode 为 Text 类型时，挂载 textNode
@@ -133,7 +136,6 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
   - 新老节点的属性值发生改变时 ----> 更新
   - 对比新老节点，新节点的某些属性值为 null 或 undefined 时----> 删除这些属性
   - 对比新老节点，新节点中不存在老节点中的属性时 ----> 删除不存在的属性
-  
 - 对于节点的更新，存在以下四种场景
   - 新节点为文本时，老节点为数组；删除老数组，新增新文本
   - 新节点为文本时，老节点也是文本；新文本覆盖老文本
@@ -148,7 +150,6 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
         - 新节点存在于老节点上，将老节点移动到相应位置
         - 新节点存在，老节点不存在，新增新节点
         - 新节点不存在，老节点存在，删除老节点
-  
 - 组件的更新流程,在 setup 状态发生变更后触发。父组件的状态发生变更后，其 children 会进入更新流程，如果其 children 的一个成员是组件，此时，如果该组件的 props 没有发生过变化，不应该对它进行更新。因为父组件和子组件之间是通过 props 联系的
 
 - 视图的更新应该是异步的，为了实现在本轮更新事件结束后，才执行更新函数的目的。采用微任务的形式，开辟一个任务队列，等待主流程执行完毕后，再将微任务推入主流程。而 nextTick 的作用就是将回调函数推入任务队列

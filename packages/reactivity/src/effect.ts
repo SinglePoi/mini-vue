@@ -24,11 +24,11 @@ export function effect(fn, obj?: ReactiveEffectOptions) {
 export type EffectFn = () => any;
 
 export class ReactiveEffect {
-  private _fn: EffectFn;
-  public _scheduler: EffectScheduler;
-  public deps = [];
-  private active = true;
-  public onStop?: () => any;
+  _fn: EffectFn;
+  _scheduler: EffectScheduler;
+  deps = [];
+  active = true;
+  onStop?: () => any;
   constructor(fn, scheduler?) {
     this._fn = fn;
     this._scheduler = scheduler;
@@ -36,6 +36,7 @@ export class ReactiveEffect {
   run() {
     // stop 情况下，继承 shouldTrack 的值，此时为 false
     if (!this.active) {
+      // 默认情况下，立即执行 fn
       return this._fn();
     }
 

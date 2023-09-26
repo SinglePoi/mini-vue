@@ -10,21 +10,26 @@ export const enum ReactiveFlags {
   IS_RESCTIVE = "__v_isReactive",
 }
 
+// reactive 工厂
 export function reactive(target) {
   return createReactiveObject(target, reactiveHandlers);
 }
 
+// readonly 工厂
 export function readonly(target: any) {
   return createReactiveObject(target, readonlyHandlers);
 }
 
+// shallowReadonly 工厂
 export function shallowReadonly(target: any) {
   return createReactiveObject(target, shallowReadonlyHandlers);
 }
 
+// 响应式对象的抽象工厂
 function createReactiveObject(target, baseHandlers) {
   if (!isObject(target)) {
-    console.warn(`target ${target} is non-object `);
+    // 如果 target 不是对象类型，提示错误，并原样返回
+    console.warn(`value cannot be made reactive: ${String(target)}`);
     return target;
   }
   return new Proxy(target, baseHandlers);
