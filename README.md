@@ -1,7 +1,7 @@
 <h1 align="center">hello-vue</h1> 
 <p align="center"> vue 的简单实现 </p>
 
-<p><img src="https://img.shields.io/badge/vue-code-blue?labelColor=green" alt="NPM version"></p>
+<p align="center"><img src="https://img.shields.io/badge/vue-code-blue?labelColor=green" alt="NPM version"></p>
 
 ### 结构目录
 
@@ -54,33 +54,78 @@
 ## 计划
 
 - [x] 首先学习 mini-vue ，建立对 Vue 源码的初步印象，作为入门 Vue 源码学习的第一步
+- [ ] 补全对数组、Set 以及 Map 的响应式拦截操作
 - [ ] 通过官方的测试用例，补充完善功能代码，同步学习 TypeScript 的使用
 
 ## 介绍
 
 #### reactivity
 
-- 实现 reactive
-  - 逻辑
-    - 通过 Proxy 实现
-    - get 中通过 track 实现收集依赖（activeEffect）
-    - set 中通过 trigger 实现触发依赖（activeEffect）
-    - 依赖是否收集需要通过 activeEffect 和 shouldTrack 判断
-    - readonly 对对象的 set 方法进行拦截，阻止对值的更改且输出提示
-    - reactive 默认的深层次代理，是通过对上层代理的 Reflect.get 返回的值在进行一次 reactive；当然，需要判断是否是对象类型
-    - readonly 默认的深层代理，如同 reactive 的思路
-    - shallowReadonly 的实现在于：在 shallow 状态为 true 时，直接返回上层代理的返回值
-  - API
-    - isReactive: 目标值是否是通过 reactive 创建的
-    - isReadonly: 目标值是否是通过 readonly 创建的
-    - isProxy: 目标值能否满足 isReactive 和 isReadonly 其中之一
 - 实现 effect
-  - 逻辑
-    - effect.fn 应该立即执行一次，并且将 effect.fn 赋值给 activeEffect
-    - effect 需要返回一个 runner 函数，由开发者去控制执行的时机
-    - stop 函数可以在依赖队列中删除依赖的 effect，~~?但是只能生效一次~~
-    - onStop 函数是 stop 的钩子函数，在执行 stop 函数时触发
-    - 为了避免 stop 状态下，对依赖的重新收集，设置新的状态变量 shouldTrack
+
+  effect 是响应式逻辑的载体，是 ReactiveEffect 的实例对象
+
+  effect 对象存在 run、stop 方法，其中 run 用于执行响应式逻辑；stop 用于暂缓响应式的执行，逻辑就是清空当前依赖项的所有依赖关系，使 trigger 方法无法执行响应式逻辑。但是可以调用 runner 函数，使依赖关系被重新建立
+
+  具备的要求
+  - 副作用函数在定义时需要通过 run 方法立即执行一次，其中使 activeEffect 能够描述当前执行的 effect 
+
+  - 副作用函数的执行会返回一个 runner 函数，该函数的执行会导致响应式逻辑的再次执行，同时返回执行的结果。runner 函数指定 this 指向副作用函数本身
+
+  - 副作用函数存在第二个参数 options，作为函数的配置项
+
+    - 其中存在调度器函数（scheduler），存在调度器的副作用函数在重新执行时会优先执行调度器函数，重新执行指的是除第一次执行外的后续执行
+
+  - 将 stop 的清空逻辑封装为 cleanupEffect 函数，以备复用。同时不再允许依赖的收集
+
+  - 为了反映 effect 的依赖状态，创建布尔类型的 active 变量，为 true 时代表该副作用函数的依赖关系仍然确立；执行过 stop 的副作用函数应该为 false，表示该副作用函数的依赖已经被清空，再次调用 stop 将不再执行
+
+  - onStop 回调函数在 stop 方法触发时执行，允许用户在 stop 时做额外的处理
+
+  - 为了避免 stop 状态下，对依赖的重新收集，设置全局状态变量 shouldTrack，初始值为 false，此时不应该进行依赖的收集
+
+    - 正常执行 run 方法时，会将 shouldTrack 设置为 true，响应式逻辑执行完毕后，重置为 false
+
+    - 如果此时调用 stop 函数，使 active 为 false，run 方法将直接返回响应式逻辑的执行结果，此时 shouldTrack 值为 false，不应该收集依赖
+
+      ~~~ typescript
+      run() {
+      	if(!this.active){
+      		return this._fn()
+      	}
+          shouldTrack = true
+          const result = this._fn()
+          shouldTrack = false
+          return result
+      }
+      ~~~
+
+- 实现 reactive
+  
+  通过 Proxy 实现，通过代理对象能够拦截对元素对象的多种语义操作；通过 Reflect 完成对拦截操作的默认实现，依靠 receive 使运行时 this 固定指向代理对象
+  
+  为 get 拦截函数创建 createGetter 高阶函数，参数 isReadonly 默认为 false， shallow 默认为 false
+  
+  具备的要求
+  - get 中通过 track 实现收集依赖，如果已经收集过了，就不要再收集了 `dep.has(activeEffect)`
+  - set 中通过 trigger 实现触发依赖
+  - 依赖是否收集需要通过 activeEffect 和 shouldTrack 判断
+    - 在没有定义 effect 函数时，track 函数 中的 activeEffect 为 undefined，此时不应该收集依赖
+    - shouldTrack 为 false 时，也就是 stop 执行之后，不应该收集依赖
+    - 通过 isTracking() 函数统一状态变量，当 shouldTrack 为 true 时，且 activeEffect 不为 undefined 时，返回 true，认为依赖正在被收集
+  - readonly 对对象的 set 方法进行拦截，阻止对值的更改且输出提示（在开发环境中）
+  - reactive 默认的深层次代理，如果 get 拦截方法的返回值仍然是一个对象，且 isReadonly 为 false 时，使用 reactive 去代理返回值
+  - readonly 默认的深层代理，如同 reactive 的思路，且当 isReadonly 为 true 时，使用 readonly 代理返回值
+  - shallowReadonly 的实现在于：在 shallow 参数为 true 时，不再对返回值使用 readonly 代理，使代理的转化止于第一层
+  
+  具备的 API
+  
+  ​	枚举 ReactiveFlags 包含了 `__v_isReadonly` 和 `__v_isReactive` 
+  
+  - isReactive(): 目标值是否是通过 reactive() 创建的；当 get 拦截函数的 key 为 ReactiveFlags.isReactive 时，返回 !isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReactive 属性时，值为 undefined 的问题，采用 !! 将值转为布尔值后返回
+  - isReadonly(): 目标值是否是通过 readonly() 创建的；当 get 拦截函数的 key 为 iReactiveFlags.isReadonly 时，返回 isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReadonly 属性时
+  - isProxy: 目标值能否满足 isReactive 和 isReadonly 其中之一
+  
 - 实现 ref
   - 逻辑
     - ref 目标参数是原始类型，同时又需要收集 effect，因此采用 class 的存取器函数实现；这也是 ref 的值需要通过 .value 来获取的原因
@@ -93,6 +138,7 @@
     - proxyRef: 接受一个对象，如果对象中存在 ref 属性，取值时不需要 .value, 赋值时存在两种情况
       - 新值非 ref，老值是 ref，需要对 .value 进行赋值
       - 新值是 ref，无论老值是什么，直接进行替换
+  
 - 实现 computed
   - 逻辑
     - computed 表现和 ref 差不多，都是通过 .value 求值，最大的不同点在于，computed 具备缓存能力
