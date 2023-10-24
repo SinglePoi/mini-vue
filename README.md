@@ -118,32 +118,54 @@
   - readonly 默认的深层代理，如同 reactive 的思路，且当 isReadonly 为 true 时，使用 readonly 代理返回值
   - shallowReadonly 的实现在于：在 shallow 参数为 true 时，不再对返回值使用 readonly 代理，使代理的转化止于第一层
   
-  具备的 API
+  工具函数
   
   ​	枚举 ReactiveFlags 包含了 `__v_isReadonly` 和 `__v_isReactive` 
   
   - isReactive(): 目标值是否是通过 reactive() 创建的；当 get 拦截函数的 key 为 ReactiveFlags.isReactive 时，返回 !isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReactive 属性时，值为 undefined 的问题，采用 !! 将值转为布尔值后返回
   - isReadonly(): 目标值是否是通过 readonly() 创建的；当 get 拦截函数的 key 为 iReactiveFlags.isReadonly 时，返回 isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReadonly 属性时
-  - isProxy: 目标值能否满足 isReactive 和 isReadonly 其中之一
+  - isProxy(): 目标值能否满足 isReactive 和 isReadonly 其中之一
   
 - 实现 ref
-  - 逻辑
-    - ref 目标参数是原始类型，同时又需要收集 effect，因此采用 class 的存取器函数实现；这也是 ref 的值需要通过 .value 来获取的原因
-    - 如果 ref 的实参是一个对象类型，则调用 reactive 代理参数
-    - ref 的 setter 函数需要对新老值进行对比，同时要兼容对象类型，因此采用 Object.is()
-    - 也因为要对比对象类型的值，需要在 reactive 代理之前存储这个对象
-  - API
-    - isRef: 判断是否是 ref 创建的值
-    - unRef: 对于 ref 值返回 ref.value，否则返回本身
-    - proxyRef: 接受一个对象，如果对象中存在 ref 属性，取值时不需要 .value, 赋值时存在两种情况
-      - 新值非 ref，老值是 ref，需要对 .value 进行赋值
-      - 新值是 ref，无论老值是什么，直接进行替换
+  
+  通过 RefImpl 类实现，通过对 value 的 getter/setter 方法；为了满足响应式的需求，封装 track 方法中进行依赖收集的逻辑为 trackEffects 函数，其参数为 dep。在 getter 方法中触发；封装 trigger 方法中进行触发依赖的逻辑为 triggerEffects 函数，其参数为 dep。在 setter 方法中触发
+  
+  具备的要求
+  - 和 reactive 一样，需要处理没有定义 effect 函数的情况。当 isTracking() 为 true 时，才应该收集依赖
+  - ref 对 value 赋值时需要满足新旧值不同的要求，因此采用 Object.is() 设立对比条件
+  - 如果 ref 的目标是一个非原始类型，则需要调用 reactive 进行代理；同时为了满足对比的需求，对 ref 实例对象添加 _rawValue 属性用于存储原始值，将旧值与原始值做对比。
+  - 参数是非原始类型数据时，将其转化为 reactive，同时仍然需要使用 .value 获取转换后的代理对象
+  
+  工具函数
+  - isRef(): 判断是否是 RefImpl 的实例对象
+    - 新建 `__v_isRef` 属性，初始值为 true，通过 !! 返回布尔值
+  - unRef(): 接受 ref 作为参数，返回值本身
+    - 对于满足 isRef 判定的值，返回 .value，否则原样返回
+  -  proxyRef(): 使用 Proxy 创建代理对象，拦截参数的 get/set 操作
+    - get：取值时需要判断原始数据是否是 ref 数据
+      - 如果是 ref 数据，返回 value 的读取结果
+      - 如果不是 ref 数据，返回原始数据
+      - 直接使用 unRef 转换返回值即可
+    - set：赋值时需要判断原始数据是否是 ref 数据
+      - 如果新值不是 ref 数据，但原始值是 ref 数据，需要对原始值的 value 进行赋值
+      - 如果新值是 ref，直接覆盖原始值
   
 - 实现 computed
-  - 逻辑
-    - computed 表现和 ref 差不多，都是通过 .value 求值，最大的不同点在于，computed 具备缓存能力
-    - 如何缓存：第一次执行时，将结果存储至私有属性中；下次执行时，如果依赖的 reactive 对象没有发生变化时，直接返回该私有属性的值
-    - 如何判断响应式对象没有发生变化？设置一个中间值，为 true 时认为发生了变化。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
+  
+  通过 ComputedRefImpl 类实现，和 RefImpl 一样，实现对 value 的取操作
+  
+  具备的要求
+  
+  - 第一次执行时，并不会去调用用户传递的 getter 函数
+  
+  - computed 表现和 ref 差不多，都是通过 .value 求值，最大的不同点在于，computed 具备缓存能力：如果新值没有发生变化，computed 的执行返回缓存的值
+    - 如何缓存？第一次执行时，将结果缓存；下次执行时，如果依赖目标没有发生变化，直接返回缓存的值
+    - 如何判断依赖目标有没有发生变化？设置 _dirty 状态变量，为 true 时认为发生了变化。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
+  - computed 返回实例对象，当用户执行 value 读取操作时，computed 才会再次执行
+  - computed 应该内部创建一个副作用函数用于建立依赖关系
+    - 在构造函数中，通过 ReactiveEffect ，将用户传入的 getter 函数作为响应式逻辑，创建实例对象，将其设置到 _effect 属性上
+    - 此时 computed 的取值操作应该返回 _effect.run() 的值
+    - 创建一个调度函数作为 ReactiveEffect 的第二个参数传递，调度函数中需要将 _dirty 重新赋值为 true，此时认为依赖目标发生了变化
 
 #### runtime-core
 
