@@ -160,7 +160,7 @@
   
   - computed 表现和 ref 差不多，都是通过 .value 求值，最大的不同点在于，computed 具备缓存能力：如果新值没有发生变化，computed 的执行返回缓存的值
     - 如何缓存？第一次执行时，将结果缓存；下次执行时，如果依赖目标没有发生变化，直接返回缓存的值
-    - 如何判断依赖目标有没有发生变化？设置 _dirty 状态变量，为 true 时认为发生了变化。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
+    - 如何判断依赖目标有没有发生变化？设置 _dirty 状态变量，初始值为 true。当值为 true 时认为响应式对象发生变化，computed 内部的逻辑应该执行。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
   - computed 返回实例对象，当用户执行 value 读取操作时，computed 才会再次执行
   - computed 应该内部创建一个副作用函数用于建立依赖关系
     - 在构造函数中，通过 ReactiveEffect ，将用户传入的 getter 函数作为响应式逻辑，创建实例对象，将其设置到 _effect 属性上
@@ -169,10 +169,43 @@
 
 #### runtime-core
 
-主要负责组件的挂载，将组件转化为 vnode，需要具备 render 函数和 setup 函数。render 函数用于处理组件的内容，setup 用于处理注解的状态
-render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props children 三个属性。type 具备两种类型：object 和 string；
+将编译后的 render 函数渲染为真实 DOM的结构，由 setup 函数完成对真实 DOM 数据的填充，其中包含 class、props、响应式数据等。当依赖的响应式数据发生更新后，DOM 节点也应该随之更新
 
-- 流程的分支由 patch 函数控制。主要通过 type 类型进行判断，存在以下两个分支。
+##### 组件的挂载流程
+
+Step1 通过 createVNode 方法创建 vnode，接收的三个参数，第一个参数有两种情况（组件或元素标签），返回创建的 vnode
+
+Step2 将 vnode 传递给 render 函数（该 render 不是组件中的 render），在 render 函数中，调用 patch 函数
+
+Step3 在 patch 函数中，通过分析 type 的类型为 Object，判断本次补丁对象是一个组件，随之进入组件补丁流程
+
+Step4 在组件补丁流程中，通过判断其旧节点不存在，意味着本次需要进入挂载组件流程
+
+Step5 在组件挂载流程中，创建组件实例，实例中通过属性 vnode 缓存了 vnode 的信息。然后要对组件实例进行挂载操作，在其中要完成 props、slots 以及对实例绑定 setup 的状态的任务
+
+Step6 通过组件实例对象的 vnode 属性获取到 vnode，执行其中的 setup 函数，返回值会有两种类型：函数与对象。如果是函数，认为该函数是组件的 render 函数；如果是对象，需要将其赋值给组件实例对象的 setupState 属性
+
+Step7 确保组件实例中存在 render 函数，需要将 vnode 的 render 函数赋值给组件实例。只有 render 函数才能返回最终要渲染的虚拟节点
+
+Step8 在将组件实例组装完毕之后，通过执行实例对象的 render 方法，得到最终要渲染的虚拟节点树。接着以虚拟节点树作为参数，通过 patch 函数进行补丁操作
+
+h 函数本质就是调用了 createVNode 函数
+
+##### HTML 标签的挂载流程
+
+Step1 通过 patch 函数进入元素流程，如果旧标签不存在，进入标签挂载流程
+
+Step2 通过 createElement 创建标签，设置标签的内容和属性，通过 append 渲染到页面
+
+Step3 遍历虚拟节点的 props 对象，使用 setAttribute 来设置标签的属性
+
+Step4 标签的内容存在两种情况：是文本时，直接使用 textContent；是数组时，遍历 children，通过 patch 补丁每一个子成员
+
+
+
+具体的说明
+
+- patch 函数内部的分支
 
   - 组件挂载流程 processComponent ：当 type 类型为 object 时，进入组件流程。目前会直接执行 mountComponent 函数，其中第一步完成对组件实例的创建、装箱；第二步完成组件实例的开箱，最后渲染 render 函数内的 vnode，进入 patch 函数
 
@@ -234,6 +267,44 @@ render 函数由 h 函数创建的 vnode 构成，一般 vnode 具备 type props
   - 将可变与不变的代码块分开维护，可变部分由插件规则提供。
 - 实现文本类型的 render 代码生成，主要还是通过模板字符串完成拼接
 - 生成联合类型：我看不懂，怎么办
+
+### rollup
+
+安装
+
+```shell
+pnpm add rollup -D
+pnpm add tslib -D
+```
+
+rollup.config.js
+
+```js
+export default = {
+    input: './src/index.js'
+    output: [
+        {
+            format: 'cjs',
+            file: 'lib/mini-vue.cjs.js'
+        },
+    	{
+            format: 'es',
+            file: 'lib/mini-vue.esm.js'
+        }
+    ],
+    // pnpm add @rollup/plugin-typescript -D
+    plugins: [typescript()]
+}
+```
+
+package.json
+
+```json
+script: {
+    // -c 指定配置文件
+    build: 'rollup -c rollup.config.js'
+}
+```
 
 ## 收获
 
