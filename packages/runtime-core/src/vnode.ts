@@ -10,7 +10,7 @@ export function createVNode(type, props?, children?) {
     type,
     props,
     children,
-    el: null,
+    el: null, // 真实 DOM
     component: null,
     key: props?.key,
     shapeFlag: getShapeFlag(type),

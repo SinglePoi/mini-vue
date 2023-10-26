@@ -112,9 +112,11 @@ export function createRenderer(options) {
             instance.proxy,
             instance.proxy
           ));
+
           patch(null, subTree, container, instance, anchor);
 
-          // 在整个 element 渲染完毕后，再将 elementVnode 上的 el 赋值给当前组件的 el
+          // 在整个 element 渲染完毕后，再将 element Vnode 上的 el 赋值给当前组件的 el
+          // initialVNode 是组件的 vnode，subTree 是 element 的 vnode，el 是在 mountElement 时赋值的
           initialVnode.el = subTree.el;
 
           instance.isMounted = true;

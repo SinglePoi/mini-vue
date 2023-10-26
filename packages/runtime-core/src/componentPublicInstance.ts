@@ -1,5 +1,6 @@
 import { hasOwn } from "@hello-vue/shared";
 
+// 策略模式
 const publicPropertiesMap = {
   /**
    * 这里使用了 instance.vnode ，指向当前组件实例

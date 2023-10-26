@@ -210,11 +210,8 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
   - 组件挂载流程 processComponent ：当 type 类型为 object 时，进入组件流程。目前会直接执行 mountComponent 函数，其中第一步完成对组件实例的创建、装箱；第二步完成组件实例的开箱，最后渲染 render 函数内的 vnode，进入 patch 函数
 
   - 元素挂载流程 processElement：当 type 类型为 string 时，进入元素流程。其中分别处理 attribute 和 children ，最后挂载到容器上
-
-- 为了在 render 函数中，能够使用 this 来获取特定的数据，例如 setup 中的返回值。创建一个 proxy 对象来代理 this 的 getter 方法，从 setupState 中获取值
-
+- 为了在 render 函数中，能够使用 this 来获取特定的数据，例如 setup 或 $el 等。需要创建一个 代理对象来拦截取值方法。在执行 render 函数时，使其 this 指向这个代理对象，这样在 render 函数中就可以使用 this 来获取特定的值了
 - 以性能为主，使用位运算代替之前的分支判断
-
 - setup(props, {emit})
   - 其一，将 props 作为 setup 的参数
   - 其二，emit 的本质是查找 props 中是否存在对应的 onEvent 函数，去调用该函数，其中使用了 bind 去改写了 emit 的 this 指向，使当前组件实例对象永远作为参数之一，不需要用户去额外传入
@@ -222,17 +219,11 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
   - 具名插槽就是当 slots 为对象类型时，通过对象 key ，借用 renderSlots 工具函数根据 key 来进行对应的处理
   - 作用域插槽和具名插槽的处理方式类似，只不过是将 children 的属性值设置为了函数，这是为了方便子组件数据的传递，大致的思路是和 emit 差不多的。都是从目标对象中获取到对应属性名的属性值，然后调用的时候将准备好的变量通过函数参数进行传递
 - Fragment：vnode 的 type 之一，在此之前，插槽节点都需要挂载到 div 节点下，使得在父子节点之间就会多出一个 div 节点。Fragment 解决了这个问题
-
 - 目前为止，children 如果是一个数组，其中是不接受 string 字面量的。现在新增 Text 节点，当 vnode 为 Text 类型时，挂载 textNode
-
 - getCurrentInstance 可以使用户在 setup 函数中获取到当前的虚拟节点对象
-
 - provide/inject 具备跨组件传递的状态变量的能力，具备原型链的特点~因为是用原型链做的~，provide 的值是挂载到当前组件实例上的，如同 props slots 等
-
 - 为了实现自定义 render API 的能力，重构 renderer.ts 的内容，以闭包的方式，使 createRenderer 作为上层函数，接受自定义的 render 函数。规定其创建节点的函数名为 createElement、渲染节点的函数名为 patchProp、挂载节点的函数名为 insert。createRenderer 函数返回 createAPI 节点，createAPI 函数由 createApp 函数重构而来，使 createAPI 作为上层函数，同样以 render 函数为参数。
-
 - 视图的更新，同样通过 effect 的依赖收集和触发依赖实现。同时，为了满足对新老 vnode 的对比，扩容 patch 的参数个数，增加对更新前 vnode 的参数
-
 - 满足以下条件时，节点的 attribute 应该更新。
   - 新老节点的属性值发生改变时 ----> 更新
   - 对比新老节点，新节点的某些属性值为 null 或 undefined 时----> 删除这些属性
@@ -252,7 +243,6 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
         - 新节点存在，老节点不存在，新增新节点
         - 新节点不存在，老节点存在，删除老节点
 - 组件的更新流程,在 setup 状态发生变更后触发。父组件的状态发生变更后，其 children 会进入更新流程，如果其 children 的一个成员是组件，此时，如果该组件的 props 没有发生过变化，不应该对它进行更新。因为父组件和子组件之间是通过 props 联系的
-
 - 视图的更新应该是异步的，为了实现在本轮更新事件结束后，才执行更新函数的目的。采用微任务的形式，开辟一个任务队列，等待主流程执行完毕后，再将微任务推入主流程。而 nextTick 的作用就是将回调函数推入任务队列
 
 ### compiler-core
