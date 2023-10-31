@@ -59,113 +59,117 @@
 
 ## 介绍
 
-#### reactivity
+### reactivity
 
-- 实现 effect
+####  实现 effect
 
-  effect 是响应式逻辑的载体，是 ReactiveEffect 的实例对象
+effect 是响应式逻辑的载体，是 ReactiveEffect 的实例对象
 
-  effect 对象存在 run、stop 方法，其中 run 用于执行响应式逻辑；stop 用于暂缓响应式的执行，逻辑就是清空当前依赖项的所有依赖关系，使 trigger 方法无法执行响应式逻辑。但是可以调用 runner 函数，使依赖关系被重新建立
+effect 对象存在 run、stop 方法，其中 run 用于执行响应式逻辑；stop 用于暂缓响应式的执行，逻辑就是清空当前依赖项的所有依赖关系，使 trigger 方法无法执行响应式逻辑。但是可以调用 runner 函数，使依赖关系被重新建立
 
-  具备的要求
-  - 副作用函数在定义时需要通过 run 方法立即执行一次，其中使 activeEffect 能够描述当前执行的 effect 
+##### 具备的要求
 
-  - 副作用函数的执行会返回一个 runner 函数，该函数的执行会导致响应式逻辑的再次执行，同时返回执行的结果。runner 函数指定 this 指向副作用函数本身
+- 副作用函数在定义时需要通过 run 方法立即执行一次，其中使 activeEffect 能够描述当前执行的 effect 
 
-  - 副作用函数存在第二个参数 options，作为函数的配置项
+- 副作用函数的执行会返回一个 runner 函数，该函数的执行会导致响应式逻辑的再次执行，同时返回执行的结果。runner 函数指定 this 指向副作用函数本身
 
-    - 其中存在调度器函数（scheduler），存在调度器的副作用函数在重新执行时会优先执行调度器函数，重新执行指的是除第一次执行外的后续执行
+- 副作用函数存在第二个参数 options，作为函数的配置项
 
-  - 将 stop 的清空逻辑封装为 cleanupEffect 函数，以备复用。同时不再允许依赖的收集
+  - 其中存在调度器函数（scheduler），存在调度器的副作用函数在重新执行时会优先执行调度器函数，重新执行指的是除第一次执行外的后续执行
 
-  - 为了反映 effect 的依赖状态，创建布尔类型的 active 变量，为 true 时代表该副作用函数的依赖关系仍然确立；执行过 stop 的副作用函数应该为 false，表示该副作用函数的依赖已经被清空，再次调用 stop 将不再执行
+- 将 stop 的清空逻辑封装为 cleanupEffect 函数，以备复用。同时不再允许依赖的收集
 
-  - onStop 回调函数在 stop 方法触发时执行，允许用户在 stop 时做额外的处理
+- 为了反映 effect 的依赖状态，创建布尔类型的 active 变量，为 true 时代表该副作用函数的依赖关系仍然确立；执行过 stop 的副作用函数应该为 false，表示该副作用函数的依赖已经被清空，再次调用 stop 将不再执行
 
-  - 为了避免 stop 状态下，对依赖的重新收集，设置全局状态变量 shouldTrack，初始值为 false，此时不应该进行依赖的收集
+- onStop 回调函数在 stop 方法触发时执行，允许用户在 stop 时做额外的处理
 
-    - 正常执行 run 方法时，会将 shouldTrack 设置为 true，响应式逻辑执行完毕后，重置为 false
+- 为了避免 stop 状态下，对依赖的重新收集，设置全局状态变量 shouldTrack，初始值为 false，此时不应该进行依赖的收集
 
-    - 如果此时调用 stop 函数，使 active 为 false，run 方法将直接返回响应式逻辑的执行结果，此时 shouldTrack 值为 false，不应该收集依赖
+  - 正常执行 run 方法时，会将 shouldTrack 设置为 true，响应式逻辑执行完毕后，重置为 false
 
-      ~~~ typescript
-      run() {
-      	if(!this.active){
-      		return this._fn()
-      	}
-          shouldTrack = true
-          const result = this._fn()
-          shouldTrack = false
-          return result
-      }
-      ~~~
+  - 如果此时调用 stop 函数，使 active 为 false，run 方法将直接返回响应式逻辑的执行结果，此时 shouldTrack 值为 false，不应该收集依赖
 
-- 实现 reactive
-  
-  通过 Proxy 实现，通过代理对象能够拦截对元素对象的多种语义操作；通过 Reflect 完成对拦截操作的默认实现，依靠 receive 使运行时 this 固定指向代理对象
-  
-  为 get 拦截函数创建 createGetter 高阶函数，参数 isReadonly 默认为 false， shallow 默认为 false
-  
-  具备的要求
-  - get 中通过 track 实现收集依赖，如果已经收集过了，就不要再收集了 `dep.has(activeEffect)`
-  - set 中通过 trigger 实现触发依赖
-  - 依赖是否收集需要通过 activeEffect 和 shouldTrack 判断
-    - 在没有定义 effect 函数时，track 函数 中的 activeEffect 为 undefined，此时不应该收集依赖
-    - shouldTrack 为 false 时，也就是 stop 执行之后，不应该收集依赖
-    - 通过 isTracking() 函数统一状态变量，当 shouldTrack 为 true 时，且 activeEffect 不为 undefined 时，返回 true，认为依赖正在被收集
-  - readonly 对对象的 set 方法进行拦截，阻止对值的更改且输出提示（在开发环境中）
-  - reactive 默认的深层次代理，如果 get 拦截方法的返回值仍然是一个对象，且 isReadonly 为 false 时，使用 reactive 去代理返回值
-  - readonly 默认的深层代理，如同 reactive 的思路，且当 isReadonly 为 true 时，使用 readonly 代理返回值
-  - shallowReadonly 的实现在于：在 shallow 参数为 true 时，不再对返回值使用 readonly 代理，使代理的转化止于第一层
-  
-  工具函数
-  
-  ​	枚举 ReactiveFlags 包含了 `__v_isReadonly` 和 `__v_isReactive` 
-  
-  - isReactive(): 目标值是否是通过 reactive() 创建的；当 get 拦截函数的 key 为 ReactiveFlags.isReactive 时，返回 !isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReactive 属性时，值为 undefined 的问题，采用 !! 将值转为布尔值后返回
-  - isReadonly(): 目标值是否是通过 readonly() 创建的；当 get 拦截函数的 key 为 iReactiveFlags.isReadonly 时，返回 isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReadonly 属性时
-  - isProxy(): 目标值能否满足 isReactive 和 isReadonly 其中之一
-  
-- 实现 ref
-  
-  通过 RefImpl 类实现，通过对 value 的 getter/setter 方法；为了满足响应式的需求，封装 track 方法中进行依赖收集的逻辑为 trackEffects 函数，其参数为 dep。在 getter 方法中触发；封装 trigger 方法中进行触发依赖的逻辑为 triggerEffects 函数，其参数为 dep。在 setter 方法中触发
-  
-  具备的要求
-  - 和 reactive 一样，需要处理没有定义 effect 函数的情况。当 isTracking() 为 true 时，才应该收集依赖
-  - ref 对 value 赋值时需要满足新旧值不同的要求，因此采用 Object.is() 设立对比条件
-  - 如果 ref 的目标是一个非原始类型，则需要调用 reactive 进行代理；同时为了满足对比的需求，对 ref 实例对象添加 _rawValue 属性用于存储原始值，将旧值与原始值做对比。
-  - 参数是非原始类型数据时，将其转化为 reactive，同时仍然需要使用 .value 获取转换后的代理对象
-  
-  工具函数
-  - isRef(): 判断是否是 RefImpl 的实例对象
-    - 新建 `__v_isRef` 属性，初始值为 true，通过 !! 返回布尔值
-  - unRef(): 接受 ref 作为参数，返回值本身
-    - 对于满足 isRef 判定的值，返回 .value，否则原样返回
-  -  proxyRef(): 使用 Proxy 创建代理对象，拦截参数的 get/set 操作
-    - get：取值时需要判断原始数据是否是 ref 数据
-      - 如果是 ref 数据，返回 value 的读取结果
-      - 如果不是 ref 数据，返回原始数据
-      - 直接使用 unRef 转换返回值即可
-    - set：赋值时需要判断原始数据是否是 ref 数据
-      - 如果新值不是 ref 数据，但原始值是 ref 数据，需要对原始值的 value 进行赋值
-      - 如果新值是 ref，直接覆盖原始值
-  
-- 实现 computed
-  
-  通过 ComputedRefImpl 类实现，和 RefImpl 一样，实现对 value 的取操作
-  
-  具备的要求
-  
-  - 第一次执行时，并不会去调用用户传递的 getter 函数
-  
-  - computed 表现和 ref 差不多，都是通过 .value 求值，最大的不同点在于，computed 具备缓存能力：如果新值没有发生变化，computed 的执行返回缓存的值
-    - 如何缓存？第一次执行时，将结果缓存；下次执行时，如果依赖目标没有发生变化，直接返回缓存的值
-    - 如何判断依赖目标有没有发生变化？设置 _dirty 状态变量，初始值为 true。当值为 true 时认为响应式对象发生变化，computed 内部的逻辑应该执行。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
-  - computed 返回实例对象，当用户执行 value 读取操作时，computed 才会再次执行
-  - computed 应该内部创建一个副作用函数用于建立依赖关系
-    - 在构造函数中，通过 ReactiveEffect ，将用户传入的 getter 函数作为响应式逻辑，创建实例对象，将其设置到 _effect 属性上
-    - 此时 computed 的取值操作应该返回 _effect.run() 的值
-    - 创建一个调度函数作为 ReactiveEffect 的第二个参数传递，调度函数中需要将 _dirty 重新赋值为 true，此时认为依赖目标发生了变化
+    ~~~ typescript
+    run() {
+    	if(!this.active){
+    		return this._fn()
+    	}
+        shouldTrack = true
+        const result = this._fn()
+        shouldTrack = false
+        return result
+    }
+    ~~~
+
+#### 实现 reactive
+
+通过 Proxy 实现，通过代理对象能够拦截对元素对象的多种语义操作；通过 Reflect 完成对拦截操作的默认实现，依靠 receive 使运行时 this 固定指向代理对象
+
+为 get 拦截函数创建 createGetter 高阶函数，参数 isReadonly 默认为 false， shallow 默认为 false
+
+##### 具备的要求
+
+- get 中通过 track 实现收集依赖，如果已经收集过了，就不要再收集了 `dep.has(activeEffect)`
+- set 中通过 trigger 实现触发依赖
+- 依赖是否收集需要通过 activeEffect 和 shouldTrack 判断
+  - 在没有定义 effect 函数时，track 函数 中的 activeEffect 为 undefined，此时不应该收集依赖
+  - shouldTrack 为 false 时，也就是 stop 执行之后，不应该收集依赖
+  - 通过 isTracking() 函数统一状态变量，当 shouldTrack 为 true 时，且 activeEffect 不为 undefined 时，返回 true，认为依赖正在被收集
+- readonly 对对象的 set 方法进行拦截，阻止对值的更改且输出提示（在开发环境中）
+- reactive 默认的深层次代理，如果 get 拦截方法的返回值仍然是一个对象，且 isReadonly 为 false 时，使用 reactive 去代理返回值
+- readonly 默认的深层代理，如同 reactive 的思路，且当 isReadonly 为 true 时，使用 readonly 代理返回值
+- shallowReadonly 的实现在于：在 shallow 参数为 true 时，不再对返回值使用 readonly 代理，使代理的转化止于第一层
+
+##### 工具函数
+
+​	枚举 ReactiveFlags 包含了 `__v_isReadonly` 和 `__v_isReactive` 
+
+- isReactive(): 目标值是否是通过 reactive() 创建的；当 get 拦截函数的 key 为 ReactiveFlags.isReactive 时，返回 !isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReactive 属性时，值为 undefined 的问题，采用 !! 将值转为布尔值后返回
+- isReadonly(): 目标值是否是通过 readonly() 创建的；当 get 拦截函数的 key 为 iReactiveFlags.isReadonly 时，返回 isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReadonly 属性时
+- isProxy(): 目标值能否满足 isReactive 和 isReadonly 其中之一
+
+#### 实现 ref
+
+通过 RefImpl 类实现，通过对 value 的 getter/setter 方法；为了满足响应式的需求，封装 track 方法中进行依赖收集的逻辑为 trackEffects 函数，其参数为 dep。在 getter 方法中触发；封装 trigger 方法中进行触发依赖的逻辑为 triggerEffects 函数，其参数为 dep。在 setter 方法中触发
+
+##### 具备的要求
+
+- 和 reactive 一样，需要处理没有定义 effect 函数的情况。当 isTracking() 为 true 时，才应该收集依赖
+- ref 对 value 赋值时需要满足新旧值不同的要求，因此采用 Object.is() 设立对比条件
+- 如果 ref 的目标是一个非原始类型，则需要调用 reactive 进行代理；同时为了满足对比的需求，对 ref 实例对象添加 _rawValue 属性用于存储原始值，将旧值与原始值做对比。
+- 参数是非原始类型数据时，将其转化为 reactive，同时仍然需要使用 .value 获取转换后的代理对象
+
+##### 工具函数
+
+- isRef(): 判断是否是 RefImpl 的实例对象
+  - 新建 `__v_isRef` 属性，初始值为 true，通过 !! 返回布尔值
+- unRef(): 接受 ref 作为参数，返回值本身
+  - 对于满足 isRef 判定的值，返回 .value，否则原样返回
+-  proxyRef(): 使用 Proxy 创建代理对象，拦截参数的 get/set 操作
+  - get：取值时需要判断原始数据是否是 ref 数据
+    - 如果是 ref 数据，返回 value 的读取结果
+    - 如果不是 ref 数据，返回原始数据
+    - 直接使用 unRef 转换返回值即可
+  - set：赋值时需要判断原始数据是否是 ref 数据
+    - 如果新值不是 ref 数据，但原始值是 ref 数据，需要对原始值的 value 进行赋值
+    - 如果新值是 ref，直接覆盖原始值
+
+#### 实现 computed
+
+通过 ComputedRefImpl 类实现，和 RefImpl 一样，实现对 value 的取操作
+
+##### 具备的要求
+
+- 第一次执行时，并不会去调用用户传递的 getter 函数
+
+- computed 表现和 ref 差不多，都是通过 .value 求值，最大的不同点在于，computed 具备缓存能力：如果新值没有发生变化，computed 的执行返回缓存的值
+  - 如何缓存？第一次执行时，将结果缓存；下次执行时，如果依赖目标没有发生变化，直接返回缓存的值
+  - 如何判断依赖目标有没有发生变化？设置 _dirty 状态变量，初始值为 true。当值为 true 时认为响应式对象发生变化，computed 内部的逻辑应该执行。每次执行 getter 时，更新为 false 。响应式对象发生变化时，借用 effect 的 scheduler 能力：每当 effect 触发时，执行 scheduler 使中间值的状态变更为 true
+- computed 返回实例对象，当用户执行 value 读取操作时，computed 才会再次执行
+- computed 应该内部创建一个副作用函数用于建立依赖关系
+  - 在构造函数中，通过 ReactiveEffect ，将用户传入的 getter 函数作为响应式逻辑，创建实例对象，将其设置到 _effect 属性上
+  - 此时 computed 的取值操作应该返回 _effect.run() 的值
+  - 创建一个调度函数作为 ReactiveEffect 的第二个参数传递，调度函数中需要将 _dirty 重新赋值为 true，此时认为依赖目标发生了变化
 
 #### runtime-core
 
@@ -203,7 +207,7 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
 
 
 
-具体的说明
+##### 具体的说明
 
 - patch 函数内部的分支
 
@@ -211,10 +215,26 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
 
   - 元素挂载流程 processElement：当 type 类型为 string 时，进入元素流程。其中分别处理 attribute 和 children ，最后挂载到容器上
 - 为了在 render 函数中，能够使用 this 来获取特定的数据，例如 setup 或 $el 等。需要创建一个 代理对象来拦截取值方法。在执行 render 函数时，使其 this 指向这个代理对象，这样在 render 函数中就可以使用 this 来获取特定的值了
-- 以性能为主，使用位运算代替之前的分支判断
-- setup(props, {emit})
-  - 其一，将 props 作为 setup 的参数
-  - 其二，emit 的本质是查找 props 中是否存在对应的 onEvent 函数，去调用该函数，其中使用了 bind 去改写了 emit 的 this 指向，使当前组件实例对象永远作为参数之一，不需要用户去额外传入
+- 以性能为主，使用位运算代替之前的分支判断，这部分内容包含在 ShapeFlags 中
+  - 位运算 | 或 ：用于设置 ShapeFlags 枚举的值
+    - 两位都是 0，才为 0；（0001 | 0001 === 0001 或 0000 | 0001 === 0001）
+    - 例如 ShapeFlage.element  | 0001，就是设置 ShapeFlage.element 为 1；
+
+  - 位运算 & 和：用于匹配 ShapeFlags 枚举的值
+    - 两位都为 1，才为 1；（0001 & 0001 === 0001 或 0000 & 0001 === 0000）
+    - 例如表达式 ShapeFlags.element & 0001 === 0001 ，为 true 时说明 ShapeFlags.element 的值是 0001
+- 为元素绑定事件，在挂载 mountElement 流程中，如果 props 的 key 以 on 开头且之后的单词首字母是大写的（正则表达式可以写成 /^on[A-Z]/），可以认为是事件，此时需要 addEventListener
+- 实现 setup(props, {emit})
+  - props 的要求：
+    - 能够在组件 setup 里使用 props： setupStatefulComponent 方法中获取 setup 返回值时，将 props 作为 setup 的参数传递，使得可以满足以下几点要求
+    - 能够在组件 render 函数中通过 this 获取到 props 的值，主要原因在于：之前为 this 能够获取到特定值而创建过代理对象，props 同样在这个代理对象的 get 拦截函数中，如果 key 存在 props 中，返回 props[key]
+    - props 是只读的：但只对首层进行只读处理，因此使用 shallowReadonly 包含
+    - 对于边界的处理：如果 props 不是一个对象类型，应该给予警告；或者在初始化 props 时默认给予空对象
+  
+  - emit 的要求：
+    - emit 的本质是调用在父组件中为子组件注册的事件。而组件的事件都是存在 props 中的，于 mountElement 方法中挂载。emit 查找到本组件中同名的事件函数（ emit add -> props onAdd），然后使用 bind 将当前组件实例对象作为参数传入，使事件函数绑定实例对象，用户只需要关注 emit 的事件名和其余入参即可
+    - 除了 add 以外还应该支持中划线命名 add-foo。通过正则表达式 /-(\w)/g 来匹配 -x 格式的内容，之后将组内容大写，就能得到 X，在与之前的内容拼接即可
+  
 - 关于插槽，其实就是当 vnode 的 type 为组件时，这个时候走的是组件处理分支，此时 vnode 的 children 就是 slots
   - 具名插槽就是当 slots 为对象类型时，通过对象 key ，借用 renderSlots 工具函数根据 key 来进行对应的处理
   - 作用域插槽和具名插槽的处理方式类似，只不过是将 children 的属性值设置为了函数，这是为了方便子组件数据的传递，大致的思路是和 emit 差不多的。都是从目标对象中获取到对应属性名的属性值，然后调用的时候将准备好的变量通过函数参数进行传递
@@ -264,7 +284,7 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
 
 ```shell
 pnpm add rollup -D
-pnpm add tslib -D
+// pnpm add tslib -D
 ```
 
 rollup.config.js
