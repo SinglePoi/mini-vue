@@ -226,18 +226,35 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
 - 为元素绑定事件，在挂载 mountElement 流程中，如果 props 的 key 以 on 开头且之后的单词首字母是大写的（正则表达式可以写成 /^on[A-Z]/），可以认为是事件，此时需要 addEventListener
 - 实现 setup(props, {emit})
   - props 的要求：
-    - 能够在组件 setup 里使用 props： setupStatefulComponent 方法中获取 setup 返回值时，将 props 作为 setup 的参数传递，使得可以满足以下几点要求
+    - 能够在组件 setup 里使用 props： setupStatefulComponent 方法中获取 setup 返回值时，将 props 作为 setup 的参数传递
     - 能够在组件 render 函数中通过 this 获取到 props 的值，主要原因在于：之前为 this 能够获取到特定值而创建过代理对象，props 同样在这个代理对象的 get 拦截函数中，如果 key 存在 props 中，返回 props[key]
     - props 是只读的：但只对首层进行只读处理，因此使用 shallowReadonly 包含
     - 对于边界的处理：如果 props 不是一个对象类型，应该给予警告；或者在初始化 props 时默认给予空对象
   
   - emit 的要求：
     - emit 的本质是调用在父组件中为子组件注册的事件。而组件的事件都是存在 props 中的，于 mountElement 方法中挂载。emit 查找到本组件中同名的事件函数（ emit add -> props onAdd），然后使用 bind 将当前组件实例对象作为参数传入，使事件函数绑定实例对象，用户只需要关注 emit 的事件名和其余入参即可
-    - 除了 add 以外还应该支持中划线命名 add-foo。通过正则表达式 /-(\w)/g 来匹配 -x 格式的内容，之后将组内容大写，就能得到 X，在与之前的内容拼接即可
+    - 除了 add 以外还应该支持中划线命名 add-foo。通过正则表达式 /-(\w)/g 来匹配 -x 格式的内容，之后将组内容大写，就能得到 X，再与之前的内容拼接即可
   
 - 关于插槽，其实就是当 vnode 的 type 为组件时，这个时候走的是组件处理分支，此时 vnode 的 children 就是 slots
-  - 具名插槽就是当 slots 为对象类型时，通过对象 key ，借用 renderSlots 工具函数根据 key 来进行对应的处理
-  - 作用域插槽和具名插槽的处理方式类似，只不过是将 children 的属性值设置为了函数，这是为了方便子组件数据的传递，大致的思路是和 emit 差不多的。都是从目标对象中获取到对应属性名的属性值，然后调用的时候将准备好的变量通过函数参数进行传递
+
+  - 对于父组件来说，插槽就是子组件的子组件；同时插槽在 vnode.type 为组件时才有效
+
+  - 为了配合插槽的使用，子节点的 render 函数内部需要通过 slots 获取插槽内容，将其渲染到指定位置
+  - slots 的实现：
+    - slots 也是在 render 内部通过 this.$slots 获取的，自然也是依靠 this 代理对象的 getter 拦截函数返回插槽内容
+    - 返回的 slots 值是从哪里获取的呢？在 setupComponent 的内部，initProps 完成之后的 initSlots 函数中。而此时知道组件的 children 就是 slots，所以在 initSlots 函数内部可以粗暴的直接将 children 赋值给实例对象的 slots 函数。getter 拦截函数就可以返回 slots 了
+    - 针对 slots 是数组的情况，创建 renderSlots 函数将 slots 转换为数组，也就是 [slots]
+  - 具名插槽的实现
+    - 为了满足这个要求，使用插槽时，children 需要用对象代替数组，使插槽具备 key: slot 格式
+    - 修改 renderSlots 工具函数，接受 key 作为参数传入。内部逻辑根据 key 的值，将 slot 挂载到指定的位置
+    - 针对 slots 是对象的情况，修改 renderSLots 函数，通过遍历 slots 将 slot 逐个转化为数组
+  - 作用域插槽的实现
+    - 作用域插槽的表现，子组件内部能够向外部传递值，听起来很像 emit。所以外部的 slot 应该是一个函数，参数就是内部传递的值，其作为回调函数被内部调用，调用时将 children 作为参数传入
+  - 总结：
+    - 当 children 是一个对象时，认为此时的 children 是一个插槽
+    - slots 是键值对的，但是值是函数，其参数为子组件的 children
+    - 既然 children 是一个对象，ShapeFlags 自然要新增一个 SLOT_CHILDREN 选项。同时在 createVNode 初始化 vnode 时，为 vnode.shapeFlage 设置对应的二进制位
+
 - Fragment：vnode 的 type 之一，在此之前，插槽节点都需要挂载到 div 节点下，使得在父子节点之间就会多出一个 div 节点。Fragment 解决了这个问题
 - 目前为止，children 如果是一个数组，其中是不接受 string 字面量的。现在新增 Text 节点，当 vnode 为 Text 类型时，挂载 textNode
 - getCurrentInstance 可以使用户在 setup 函数中获取到当前的虚拟节点对象
