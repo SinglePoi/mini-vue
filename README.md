@@ -125,7 +125,7 @@ effect 对象存在 run、stop 方法，其中 run 用于执行响应式逻辑�
 ​	枚举 ReactiveFlags 包含了 `__v_isReadonly` 和 `__v_isReactive` 
 
 - isReactive(): 目标值是否是通过 reactive() 创建的；当 get 拦截函数的 key 为 ReactiveFlags.isReactive 时，返回 !isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReactive 属性时，值为 undefined 的问题，采用 !! 将值转为布尔值后返回
-- isReadonly(): 目标值是否是通过 readonly() 创建的；当 get 拦截函数的 key 为 iReactiveFlags.isReadonly 时，返回 isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReadonly 属性时
+- isReadonly(): 目标值是否是通过 readonly() 创建的；当 get 拦截函数的 key 为 ReactiveFlags.isReadonly 时，返回 isReadonly 的值；为了应对非响应式数据无法拦截 get 函数，同时不存在 ReactiveFlags.isReadonly 属性时，值为 undefined 的问题，采用 !! 将值转为布尔值后返回
 - isProxy(): 目标值能否满足 isReactive 和 isReadonly 其中之一
 
 #### 实现 ref
@@ -234,7 +234,6 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
   - emit 的要求：
     - emit 的本质是调用在父组件中为子组件注册的事件。而组件的事件都是存在 props 中的，于 mountElement 方法中挂载。emit 查找到本组件中同名的事件函数（ emit add -> props onAdd），然后使用 bind 将当前组件实例对象作为参数传入，使事件函数绑定实例对象，用户只需要关注 emit 的事件名和其余入参即可
     - 除了 add 以外还应该支持中划线命名 add-foo。通过正则表达式 /-(\w)/g 来匹配 -x 格式的内容，之后将组内容大写，就能得到 X，再与之前的内容拼接即可
-  
 - 关于插槽，其实就是当 vnode 的 type 为组件时，这个时候走的是组件处理分支，此时 vnode 的 children 就是 slots
 
   - 对于父组件来说，插槽就是子组件的子组件；同时插槽在 vnode.type 为组件时才有效
@@ -242,22 +241,33 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
   - 为了配合插槽的使用，子节点的 render 函数内部需要通过 slots 获取插槽内容，将其渲染到指定位置
   - slots 的实现：
     - slots 也是在 render 内部通过 this.$slots 获取的，自然也是依靠 this 代理对象的 getter 拦截函数返回插槽内容
-    - 返回的 slots 值是从哪里获取的呢？在 setupComponent 的内部，initProps 完成之后的 initSlots 函数中。而此时知道组件的 children 就是 slots，所以在 initSlots 函数内部可以粗暴的直接将 children 赋值给实例对象的 slots 函数。getter 拦截函数就可以返回 slots 了
+    - 返回的 slots 值是从哪里获取的呢？在 setupComponent 的内部，initProps 完成之后的 initSlots 函数中。此时知道组件的 children 就是 slots，所以在 initSlots 函数内部可以暂时直接将 children 赋值给实例对象的 slots 函数。getter 拦截函数就可以返回 slots 了
     - 针对 slots 是数组的情况，创建 renderSlots 函数将 slots 转换为数组，也就是 [slots]
   - 具名插槽的实现
     - 为了满足这个要求，使用插槽时，children 需要用对象代替数组，使插槽具备 key: slot 格式
     - 修改 renderSlots 工具函数，接受 key 作为参数传入。内部逻辑根据 key 的值，将 slot 挂载到指定的位置
     - 针对 slots 是对象的情况，修改 renderSLots 函数，通过遍历 slots 将 slot 逐个转化为数组
   - 作用域插槽的实现
-    - 作用域插槽的表现，子组件内部能够向外部传递值，听起来很像 emit。所以外部的 slot 应该是一个函数，参数就是内部传递的值，其作为回调函数被内部调用，调用时将 children 作为参数传入
+    - 作用域插槽的表现，子组件内部能够向外部传递值，听起来很像 emit。所以外部的 slot 应该是一个函数，参数就是内部传递的值，其作为回调函数被内部调用，调用时将需要暴露的值作为参数传入
   - 总结：
     - 当 children 是一个对象时，认为此时的 children 是一个插槽
-    - slots 是键值对的，但是值是函数，其参数为子组件的 children
+    - slots 是键值对的，但是值是函数，其参数为子组件需要传递给父组件的状态变量
     - 既然 children 是一个对象，ShapeFlags 自然要新增一个 SLOT_CHILDREN 选项。同时在 createVNode 初始化 vnode 时，为 vnode.shapeFlage 设置对应的二进制位
+- Fragment：
+  - 表现：和 DocumentFragment 作用相似，作为 vnode.type 的内容之一，使 children 可以跳过该容器直接挂载到父容器上。在此之前，子节点都需要挂载到父节点下，使得在祖孙节点之间就会多出一个节点。Fragment 可以使子节点直接挂载到祖节点下
+  - 代码中体现在：新增了 processFragment 分支，在该函数中直接调用 mountChildren 函数，将祖组件作为容器传入
 
-- Fragment：vnode 的 type 之一，在此之前，插槽节点都需要挂载到 div 节点下，使得在父子节点之间就会多出一个 div 节点。Fragment 解决了这个问题
-- 目前为止，children 如果是一个数组，其中是不接受 string 字面量的。现在新增 Text 节点，当 vnode 为 Text 类型时，挂载 textNode
+- Text：
+  - 目前为止，children 如果是一个数组，其中是不接受 string 字面量的。现在新增 Text 节点，当 vnode 为 Text 类型时，挂载 textNode
+  - 代码中体现在：新增 createTextVNode 函数，在组件的 render 函数中将目标字符串作为参数传入。函数内部调用 createVNode 创建 vnode，vnode.type 的值为 Text = Symbol('Text')。
+    - 新增 processText 分支，在该函数中通过 document.createTextNode 创建 textNode，将其直接 append 到父容器下
+
 - getCurrentInstance 可以使用户在 setup 函数中获取到当前的虚拟节点对象
+  - 代码实现：为了能够获取到当前的组件实例对象，需要在 setupStatefulComponent 函数，也就是在执行 setup 获取组件状态变量之前，将 instance 赋值给 currentInstance 全局变量
+  - getCurrentInstance 的逻辑就是返回 currentInstance 的内容
+  - 在 setup 函数执行完毕之后，清空 currentInstance 的值
+  - 为什么要在 setup 执行后清空？以为 getCurrentInstance 方法只能在组件的 setup 函数中调用，用来获取当前的组件实例对象，setup 函数执行完毕后自然不需要保持 currentInstance 的内容了
+
 - provide/inject 具备跨组件传递的状态变量的能力，具备原型链的特点~因为是用原型链做的~，provide 的值是挂载到当前组件实例上的，如同 props slots 等
 - 为了实现自定义 render API 的能力，重构 renderer.ts 的内容，以闭包的方式，使 createRenderer 作为上层函数，接受自定义的 render 函数。规定其创建节点的函数名为 createElement、渲染节点的函数名为 patchProp、挂载节点的函数名为 insert。createRenderer 函数返回 createAPI 节点，createAPI 函数由 createApp 函数重构而来，使 createAPI 作为上层函数，同样以 render 函数为参数。
 - 视图的更新，同样通过 effect 的依赖收集和触发依赖实现。同时，为了满足对新老 vnode 的对比，扩容 patch 的参数个数，增加对更新前 vnode 的参数
