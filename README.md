@@ -205,8 +205,6 @@ Step3 遍历虚拟节点的 props 对象，使用 setAttribute 来设置标签�
 
 Step4 标签的内容存在两种情况：是文本时，直接使用 textContent；是数组时，遍历 children，通过 patch 补丁每一个子成员
 
-
-
 ##### 具体的说明
 
 - patch 函数内部的分支
@@ -246,7 +244,7 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
   - 具名插槽的实现
     - 为了满足这个要求，使用插槽时，children 需要用对象代替数组，使插槽具备 key: slot 格式
     - 修改 renderSlots 工具函数，接受 key 作为参数传入。内部逻辑根据 key 的值，将 slot 挂载到指定的位置
-    - 针对 slots 是对象的情况，修改 renderSLots 函数，通过遍历 slots 将 slot 逐个转化为数组
+    - 针对 slots 是对象的情况，修改 renderSLots 函数，通过遍历 slots 将 slot 逐个转化为数组0
   - 作用域插槽的实现
     - 作用域插槽的表现，子组件内部能够向外部传递值，听起来很像 emit。所以外部的 slot 应该是一个函数，参数就是内部传递的值，其作为回调函数被内部调用，调用时将需要暴露的值作为参数传入
   - 总结：
@@ -256,19 +254,32 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
 - Fragment：
   - 表现：和 DocumentFragment 作用相似，作为 vnode.type 的内容之一，使 children 可以跳过该容器直接挂载到父容器上。在此之前，子节点都需要挂载到父节点下，使得在祖孙节点之间就会多出一个节点。Fragment 可以使子节点直接挂载到祖节点下
   - 代码中体现在：新增了 processFragment 分支，在该函数中直接调用 mountChildren 函数，将祖组件作为容器传入
-
 - Text：
   - 目前为止，children 如果是一个数组，其中是不接受 string 字面量的。现在新增 Text 节点，当 vnode 为 Text 类型时，挂载 textNode
   - 代码中体现在：新增 createTextVNode 函数，在组件的 render 函数中将目标字符串作为参数传入。函数内部调用 createVNode 创建 vnode，vnode.type 的值为 Text = Symbol('Text')。
     - 新增 processText 分支，在该函数中通过 document.createTextNode 创建 textNode，将其直接 append 到父容器下
-
 - getCurrentInstance 可以使用户在 setup 函数中获取到当前的虚拟节点对象
   - 代码实现：为了能够获取到当前的组件实例对象，需要在 setupStatefulComponent 函数，也就是在执行 setup 获取组件状态变量之前，将 instance 赋值给 currentInstance 全局变量
   - getCurrentInstance 的逻辑就是返回 currentInstance 的内容
   - 在 setup 函数执行完毕之后，清空 currentInstance 的值
   - 为什么要在 setup 执行后清空？以为 getCurrentInstance 方法只能在组件的 setup 函数中调用，用来获取当前的组件实例对象，setup 函数执行完毕后自然不需要保持 currentInstance 的内容了
+- provide(key, value) / inject(key)
+  - 需要具备跨组件传递的状态变量的能力
 
-- provide/inject 具备跨组件传递的状态变量的能力，具备原型链的特点~因为是用原型链做的~，provide 的值是挂载到当前组件实例上的，如同 props slots 等
+  - 初始化 provides 时，默认值为 parent.provides，否则为 {}
+    - 存在的问题：parent.provides 是引用类型，设置本组件的 provides 时，会设置到父组件的 provides 上，本质上两者都是同一个引用
+    - 理想的结果：赋值时，能够在得到 parent.provides 属性的前提下，也能够设置自己的 provides ；取值时，如果本组件没有就去查找父组件，父组件没有就去查找祖组件，一直向上找。这不就是原型链吗？
+    - 解决的方法：使用 Object.create(parentProvides) 创建原型为 parentProvides 的对象，且将该对象赋值给 currentInstance.provides 。同时需要保证只有在初始化的时候创建原型对象，设置条件：当 currentInstance.provides === parentInstance.provides 时。为什么设置这个条件？因为对 provides 初始化时，默认值为 parent.provides，此时是相等的，但是赋值完毕后，两者就不同了
+
+  - 只能在组件的 setup 中使用，因为是通过 getCurrentInstance 获取的组件实例
+  - provide(key, value)
+    - 得到组件实例后，对 instance.provides 赋值：provides[key] = value
+
+  - inject(key, defaultValue)
+    - 得到父组件的实例后，对 parentInstance.provides 取值：provides[key]
+    - 父组件实例怎么获取？currentInstance.parent 
+    - 增加默认值，如果 parent.provides 不存在 key，则使用 defaultValue 作为默认值
+
 - 为了实现自定义 render API 的能力，重构 renderer.ts 的内容，以闭包的方式，使 createRenderer 作为上层函数，接受自定义的 render 函数。规定其创建节点的函数名为 createElement、渲染节点的函数名为 patchProp、挂载节点的函数名为 insert。createRenderer 函数返回 createAPI 节点，createAPI 函数由 createApp 函数重构而来，使 createAPI 作为上层函数，同样以 render 函数为参数。
 - 视图的更新，同样通过 effect 的依赖收集和触发依赖实现。同时，为了满足对新老 vnode 的对比，扩容 patch 的参数个数，增加对更新前 vnode 的参数
 - 满足以下条件时，节点的 attribute 应该更新。
