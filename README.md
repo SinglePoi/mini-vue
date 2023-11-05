@@ -279,8 +279,12 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
     - 得到父组件的实例后，对 parentInstance.provides 取值：provides[key]
     - 父组件实例怎么获取？currentInstance.parent 
     - 增加默认值，如果 parent.provides 不存在 key，则使用 defaultValue 作为默认值
+- 为了实现多平台渲染的能力，需要由用户传递对应平台的视图操作方法，将其封装为指定的 createElement、insert、patchProps 方法等。以浏览器平台为例，这部分方法被封装在了 runtime-dom 包里
+  - 通过 createRenderer 高阶函数将原本静态的 render 能力封装，用于接收用户传递的操作方法，填充在 render 函数指定的操作函数位置上
+  - 同时，因为封装了 render 函数，导致之前 mount 方法里的 render 失效。为了解决这个问题，将原先的 createApp 方法封装为 createAppAPI 高阶函数，该高阶函数接收 render 作为参数，这样 mount 方法里的 render 函数就能正常使用了。还要将 createAppAPI 暴露出去
+  - 为了兼容之前 createApp().mount() 的组件挂载方式，导入 runtime-dom 提供的 createApp 函数，该函数返回 renderer 的 createApp 方法
+  - 而 renderer 对象正是高阶函数 createRenderer 的返回值，其 createApp 方法正是 createAppAPI 方法的别名。这样一来，在 runtime_dom 中调用的 createApp 方法实际就是 createAppAPI 方法，即原先的 createApp 方法
 
-- 为了实现自定义 render API 的能力，重构 renderer.ts 的内容，以闭包的方式，使 createRenderer 作为上层函数，接受自定义的 render 函数。规定其创建节点的函数名为 createElement、渲染节点的函数名为 patchProp、挂载节点的函数名为 insert。createRenderer 函数返回 createAPI 节点，createAPI 函数由 createApp 函数重构而来，使 createAPI 作为上层函数，同样以 render 函数为参数。
 - 视图的更新，同样通过 effect 的依赖收集和触发依赖实现。同时，为了满足对新老 vnode 的对比，扩容 patch 的参数个数，增加对更新前 vnode 的参数
 - 满足以下条件时，节点的 attribute 应该更新。
   - 新老节点的属性值发生改变时 ----> 更新
