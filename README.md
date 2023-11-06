@@ -285,11 +285,23 @@ Step4 标签的内容存在两种情况：是文本时，直接使用 textConten
   - 为了兼容之前 createApp().mount() 的组件挂载方式，导入 runtime-dom 提供的 createApp 函数，该函数返回 renderer 的 createApp 方法
   - 而 renderer 对象正是高阶函数 createRenderer 的返回值，其 createApp 方法正是 createAppAPI 方法的别名。这样一来，在 runtime_dom 中调用的 createApp 方法实际就是 createAppAPI 方法，即原先的 createApp 方法
 
-- 视图的更新，同样通过 effect 的依赖收集和触发依赖实现。同时，为了满足对新老 vnode 的对比，扩容 patch 的参数个数，增加对更新前 vnode 的参数
+- 怎样监听视图依赖变量的更新？还记得 render 函数中 this 的代理对象吗，在代理对象中拦截了 get 操作，这样就可以利用 effect 来进行依赖收集了
+  - 首先，在 setupRenderEffect 函数中，用 effect 包裹 render 函数，在 render 函数内会触发状态变量的 get 函数，使 render 函数被依赖收集
+  - 当状态变量发生变更，需要判断 instance.isMounted 的值是否为 true，为 true 说明组件需要更新；
+  - 无论 isMounted 的值是什么，都会触发收集的 render 函数，这样就会返回一个全新的 vnode。这样才能继续操作
+  - 如果 isMounted 的值是 false，进入挂载分支，此时 render 函数返回的 subTree 同时需要赋值给组件实例的 subTree 属性，作为更新时的老节点
+  - 如果 isMounted 的值是 true，进入更新分支，此时通过 render 函数得到新的 subTree，通过 instance.subTree 得到老节点
+    - 当然还要将新的 subTree 赋值给 instance.subTree
+
 - 满足以下条件时，节点的 attribute 应该更新。
   - 新老节点的属性值发生改变时 ----> 更新
+    - 实现：新增 element 更新流程，通过 n1 和 n2 获取新旧 props
+    - 新建 patchProps 函数，函数内首先遍历新 props，通过 key 得到新老 props 对应的 value。比对新老 prop，如果不等，进入 hostPatchProp 方法
+    - hostPatchProp 就是 patchProp 方法，是用户传入的自定义视图操作方法。
   - 对比新老节点，新节点的某些属性值为 null 或 undefined 时----> 删除这些属性
+    - 如果新 prop 是 null 或 undefined ，使用 removeAttribute 删除属性
   - 对比新老节点，新节点中不存在老节点中的属性时 ----> 删除不存在的属性
+    - 遍历老 props，如果 prop 不在新 props 中，删除 prop
 - 对于节点的更新，存在以下四种场景
   - 新节点为文本时，老节点为数组；删除老数组，新增新文本
   - 新节点为文本时，老节点也是文本；新文本覆盖老文本
