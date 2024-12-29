@@ -65,7 +65,7 @@
 
 effect 是响应式逻辑的载体，是 ReactiveEffect 的实例对象
 
-effect 对象存在 run、stop 方法，其中 run 用于执行响应式逻辑；stop 用于暂缓响应式的执行，逻辑就是清空当前依赖项的所有依赖关系，使 trigger 方法无法执行响应式逻辑。但是可以调用 runner 函数，使依赖关系被重新建立
+effect 对象存在 run、stop 方法，其中 run 用于执行响应式逻辑；stop 用于暂缓响应式的执行，逻辑就是清空当前依赖项的所有依赖关系，使 trigger 方法无法执行响应式逻辑。但是可以调用 runner 函数，手动执行 effect 函数，但依赖仍然不会被收集
 
 ##### 具备的要求
 
